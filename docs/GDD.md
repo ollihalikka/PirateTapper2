@@ -358,18 +358,22 @@ Phased by dependency: specs before art, online before deep progression.
       the bar** (outlined for legibility), flash on damage.
 
 ### Phase 2 — Asset production pipeline *(parallel track; art drops in over time)*
-Specs first, then art: the code prefers sprites and falls back to the current
-canvas drawing, so the game never blocks on art.
-- [ ] Asset specs doc: file formats, sizes, naming (`docs/ASSET_SPECS.md`).
-- [ ] **Icon assets** — button marks + ability icons, transparent PNG 256 px,
-      one file per mark; slots in behind `drawButtonFace`.
-- [ ] **Character assets** — portrait sprite sheet per character: 6 mood
-      states (idle/blink/angry/shock/peek/smile) × 2–3 frames, fixed grid.
-      The reaction system already keys on these mood names.
-- [ ] **Character animations** — frame cycling per mood row; cast + victory
-      poses as extra rows later.
-- [ ] **Character sounds** — per-character recording spec: 4 moods × 2–3
-      takes + ~4 taunt lines, mono, normalized; routed via `AVATARS.voice`.
+Specs first, then art: the code **prefers sprites and falls back to the
+canvas drawing**, so the game never blocks on art. The override layer is
+**built and documented** — dropping a file into `web/assets/` replaces the
+drawn version; missing files fall back. Full guide: `docs/ASSET_SPECS.md`.
+- [x] Asset override layer + specs doc (`docs/ASSET_SPECS.md`): button-mark
+      icons, character portraits/sprite-sheets, and voice sets are all
+      overridable by filename; recursive artifact inlining picks them up.
+- [ ] **Icon art** — produce the 8 button marks as transparent 256 px PNGs
+      (`assets/icons/<kindId>.png`). *Pipeline ready; art needed.*
+- [ ] **Character art** — portrait per character; sprite sheet for animation
+      (6 moods idle/blink/smile/angry/shock/peek). *Pipeline ready; art needed.*
+- [ ] **Character sounds** — per-voice set: 4 moods × 2+ takes + ~4 taunt
+      lines, mono, normalized (`assets/<voiceId>-<mood><take>.mp3`).
+      *Pipeline ready; recordings needed.*
+- [ ] **Ability / UI icons** — currently emoji; add image override for
+      ability icons (small code hook, mirror the button-icon pattern).
 - [ ] Best authentic source: bake the original 3D pirate models to sprite
       sheets in Unity (camera + animation capture per character).
 
@@ -417,6 +421,35 @@ canvas drawing, so the game never blocks on art.
       multiplayer server lands (keep the single-file artifact as an output).
 - [ ] Automated balance sims: scripted bots at various skill levels playing
       thousands of matches (the Playwright harness is the seed of this).
+
+### Feature wishlist (unscheduled ideas)
+Bigger swings to slot into a phase once the fundamentals land. Captured here
+so they aren't lost; not yet committed or specced in detail.
+
+- **Map / ship-specific events** — a chosen ship/map isn't just a skin but
+  carries board events that periodically shake up both decks (fits the
+  "ships as content" economy in §12). Needs a symmetric, telegraphed,
+  fair-to-both design so it adds drama without deciding games at random.
+- **Storms as a dramatic event or heroic ability** — distinct from the
+  symmetric time-based *storm ramp* being playtested in §11. Here a storm is
+  a visible set-piece: either a **map event** (§ above — rain/wind that, say,
+  rocks buttons or dims the deck for a few seconds on both sides) or a
+  **heroic/ultimate-tier ability** a character unleashes on the opponent.
+  Decide which framing once §11's storm-ramp playtest tells us how much
+  late-game chaos the game wants.
+- **Pre-fight splash screen (X vs. Y)** — a versus intro before the match
+  where each player's chosen character, **skin, and taunt** are shown off
+  (portrait, name/title, a taunt voice line). Directly monetizes cosmetics by
+  giving them a spotlight moment, and sets the rivalry tone. Cheap to
+  prototype from existing avatar/voice data; gets richer as skins/taunts ship.
+- **Defensive abilities / maneuvers** — a way to **shield** against incoming
+  sabotage (block or cleanse a freeze/ink/curse, or a brief immunity window).
+  Could be **universal** (a shared parry on a long cooldown — adds a
+  reaction/timing skill layer for everyone) or **character-specific** (a
+  defensive pirate archetype, e.g. a "Bosun" whose kit is counters). Design
+  need: keep it a *sidegrade* (§12) and ensure it doesn't stall matches into
+  turtling — pair any shield with a cost or a tight window so aggression still
+  pays.
 
 ---
 

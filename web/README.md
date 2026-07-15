@@ -9,6 +9,17 @@ audio from `assets/` (originals from the Unity project's `Assets/` folder,
 transcoded for the web). Best experienced on a touchscreen laid flat between
 two players.
 
+To make one portable file with everything inlined (for sharing/hosting):
+`python3 build-single-file.py`.
+
+## Adding your own art & audio
+
+The game draws everything procedurally, but every visual and voice is
+overridable: drop a file into `assets/` with the right name and it replaces the
+drawn version (missing files fall back, so add them one at a time). See
+[`../docs/ASSET_SPECS.md`](../docs/ASSET_SPECS.md) for the full guide, and the
+READMEs in `assets/icons/` and `assets/characters/`.
+
 ## Gameplay
 
 Two players share the screen, one half each (the top half is rotated 180° so the

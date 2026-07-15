@@ -207,22 +207,62 @@ const CHARACTERS = [
 const PLAYER_ACCENT = ['#39b795','#e0483f'];
 const PLAYER_NAME = ['PLAYER 1','PLAYER 2'];
 
-/* ---------------- assets ---------------- */
-/* The artifact build replaces null with {filename: dataURI} to make a
-   single self-contained file; the repo version loads from ./assets/. */
+/* ---------------- assets ----------------
+   Optional art overrides. Drop a PNG into web/assets/ and it replaces the
+   matching canvas drawing; a missing file just falls back to the procedural
+   art, so the game never blocks on assets. Full guide: docs/ASSET_SPECS.md.
+
+     assets/planks.jpg                deck background (already shipped)
+     assets/icons/<kindId>.png        button mark   (transparent, ~256px square)
+     assets/characters/<charId>.png   pirate portrait (square)
+     assets/characters/<charId>.json  optional sprite-sheet manifest (animation)
+
+   kindIds: skull anchor coin bottle dynamite pistol rudder balls
+   charIds: redbeard blackhat frostjaw
+   The artifact build inlines every file under assets/ (recursively) as a
+   data URI, keyed by its path relative to assets/. */
 const ASSET_INLINE = null;
 const assetUrl = f => (ASSET_INLINE && ASSET_INLINE[f]) || ('assets/' + f);
 
-const IMG = { planks:null, coin:null };
-function loadImages(done){
-  let left = 2;
-  const one = ()=>{ if (--left === 0) done(); };
-  IMG.planks = new Image();
-  IMG.planks.onload = one; IMG.planks.onerror = ()=>{ IMG.planks = null; one(); };
-  IMG.planks.src = assetUrl('planks.jpg');
-  IMG.coin = new Image();
-  IMG.coin.onload = one; IMG.coin.onerror = ()=>{ IMG.coin = null; one(); };
-  IMG.coin.src = assetUrl('coin.png');
+const IMG = { planks:null, coin:null };   // logical key -> Image | null
+const SHEETS = {};                        // charId -> { img, meta }
+
+function loadImage(key, file){
+  return new Promise(res => {
+    const im = new Image();
+    im.onload = () => { IMG[key] = im; res(true); };
+    im.onerror = () => { IMG[key] = null; res(false); };
+    im.src = assetUrl(file);
+  });
+}
+function loadJSON(file){
+  // <img> loads fine under file://, but fetch() is CORS-blocked there, so
+  // sprite sheets need HTTP or the inlined artifact; single portraits work
+  // everywhere. Missing/invalid JSON just means "no animation".
+  return fetch(assetUrl(file)).then(r => r.ok ? r.json() : null).catch(() => null);
+}
+// In the inlined artifact, only load files that were actually bundled, so a
+// published build never 404s for optional art. In the repo (ASSET_INLINE
+// null) attempt everything, so dropping a new file in + reload just works.
+const assetExists = f => ASSET_INLINE ? Object.prototype.hasOwnProperty.call(ASSET_INLINE, f) : true;
+async function loadAssets(done){
+  const jobs = [];
+  const tryImage = (key, file) => { if (assetExists(file)) jobs.push(loadImage(key, file)); };
+  tryImage('planks','planks.jpg');
+  tryImage('coin','coin.png');
+  for (const k of BUTTON_KINDS) tryImage('icon:'+k.id, 'icons/'+k.id+'.png');
+  for (const av of AVATARS){
+    const png = 'characters/'+av.id+'.png';
+    if (!assetExists(png)) continue;
+    jobs.push(loadImage('char:'+av.id, png).then(async ok => {
+      if (!ok) return;
+      const metaFile = 'characters/'+av.id+'.json';
+      const meta = assetExists(metaFile) ? await loadJSON(metaFile) : null;
+      if (meta) SHEETS[av.id] = { img: IMG['char:'+av.id], meta };
+    }));
+  }
+  await Promise.all(jobs);
+  done && done();
 }
 
 /* Sound effects: original repo recordings, played via pooled <audio>. */
@@ -233,8 +273,12 @@ const SFX_FILES = {
   click:['click1.mp3'],
   cast: ['click2.mp3'],
 };
-for (const p of ['p1','p2'])
-  for (const e of ['angry','peek','shock','smile'])
+/* Voice sets: a character's `voice` field selects one. Add a new voice by
+   adding an id here and dropping assets/<id>-<mood><take>.mp3 files. */
+const VOICES = ['p1','p2'];
+const VOICE_MOODS = ['angry','peek','shock','smile'];
+for (const p of VOICES)
+  for (const e of VOICE_MOODS)
     SFX_FILES[`${p}-${e}`] = [`${p}-${e}1.mp3`, `${p}-${e}2.mp3`];
 
 const sfxCache = {};
@@ -487,7 +531,13 @@ function drawButtonFace(g, x, y, r, kind, seed=0){
   g.beginPath(); g.arc(x, y, r*0.8, 0, TAU); g.fill();
   g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = r*0.05;    // paint edge shadow
   g.beginPath(); g.arc(x, y, r*0.77, 0, TAU); g.stroke();
-  kind.draw(g, x, y, r);
+  const icon = IMG['icon:'+kind.id];                          // art override
+  if (icon){
+    const s = r*1.5;                                           // mark fills ~75% of the disc
+    g.drawImage(icon, x-s/2, y-s/2, s, s);
+  } else {
+    kind.draw(g, x, y, r);                                     // procedural fallback
+  }
 }
 
 function shuffled(arr){
@@ -518,6 +568,28 @@ function drawPirate(g, av, cx, cy, r, now, mood, blink){
   cy += Math.sin(now*2 + ph*2.6)*r*0.05;                       // idle bob
   if (mood === 'shock' && !REDUCED_MOTION) cx += Math.sin(now*32)*r*0.03;
   if (mood === 'angry' && !REDUCED_MOTION) cy += Math.sin(now*18)*r*0.02;
+  // art override: a custom portrait (static PNG) or sprite sheet (animated
+  // per mood) replaces the drawn pirate, clipped into the portrait circle
+  const sheet = SHEETS[av.id], portrait = IMG['char:'+av.id];
+  if (sheet || portrait){
+    g.save();
+    g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.clip();
+    if (sheet){
+      const m = sheet.meta, fw = m.frameW, fh = m.frameH, fps = m.fps || 6;
+      let md = (m.moods && m.moods[mood]) ? mood : 'idle';
+      if (blink && mood === 'idle' && m.moods && m.moods.blink) md = 'blink';
+      const def = (m.moods && m.moods[md]) || { row:0, frames:1 };
+      const n = def.frames || 1;
+      const fr = n > 1 ? Math.floor(now*fps) % n : 0;
+      g.drawImage(sheet.img, ((def.col||0)+fr)*fw, (def.row||0)*fh, fw, fh, cx-r, cy-r, r*2, r*2);
+    } else {
+      g.drawImage(portrait, cx-r, cy-r, r*2, r*2);             // static portrait
+    }
+    g.restore();
+    g.strokeStyle = 'rgba(232,196,105,0.5)'; g.lineWidth = 1.5;
+    g.beginPath(); g.arc(cx, cy, r+2, 0, TAU); g.stroke();
+    return;
+  }
   // head
   g.fillStyle = av.skin;
   g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
@@ -1593,11 +1665,11 @@ syncFs();
 if (!FS.supported() && /iPhone|iPad|iPod/.test(navigator.userAgent))
   document.getElementById('iosHint').hidden = false;
 
-loadImages(()=>{
+loadAssets(()=>{
   game.resize();        // re-bake plank backgrounds with the real texture
-  drawFacesPreview();
+  drawFacesPreview();   // redraw the start-screen preview with any custom icons
 });
-drawFacesPreview();     // draw immediately too (coin falls back until loaded)
+drawFacesPreview();     // draw immediately too (procedural until assets load)
 
 document.getElementById('startBtn').addEventListener('click', ()=>{
   Snd.ensure();
