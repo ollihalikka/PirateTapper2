@@ -189,10 +189,16 @@ Inkeye & White Death = p2 (adding a third voice set is a `VOICES` entry + files)
 
 ## 7. Presentation
 
-- **Visual world:** night-sea arcade — lantern-lit ship deck (the Unity
-  project's `PlanksDiffuse` texture), parchment-gold serif display type,
-  teal (P1) vs crimson (P2) lantern glows, wooden divider with rope and
-  crossed swords.
+- **Visual world:** two pirate ships side by side, cannons run out at each
+  other across a strip of open sea (animated waves, bobbing hulls, foam at
+  the waterlines) — each player's play area is their own ship's deck (the
+  Unity project's `PlanksDiffuse` texture), parchment-gold serif display
+  type. Bright enough to read in daylight; a light dusk tint keeps the mood.
+- **Character theming:** picking a pirate reskins your ship — the deck's
+  lantern glow and hull trim take the character's color, and ambient
+  particles drift over the deck (Redbeard: rising embers · White Death:
+  falling snow · Inkeye: pulsing ink wisps). Theme = `{glow, particle}` on
+  the character, so new characters/ships slot in as data.
 - **Audio** (all from the Unity project's `Assets/Audio`, transcoded to mp3):
   - Music: tavern and battle tracks alternating forever (port of Unity
     `MusicPlayer`), over a quiet sea-waves loop.
@@ -205,6 +211,10 @@ Inkeye & White Death = p2 (adding a third voice set is a `VOICES` entry + files)
   happened; every enemy effect announces itself on the victim's board
   (FROZEN / JUGGLED / CURSED / GUNPOWDER); every ability the caster fires is
   named on the caster's board.
+- **Health bar:** tall high-contrast bar with the HP number inside it
+  (white, outlined), a white blink + red border flash on every hit, and a
+  fighting-game "ghost" segment — the chunk just lost stays red and drains
+  down so damage size is readable at a glance.
 
 ---
 
@@ -348,11 +358,14 @@ everything).
 
 Phased by dependency: specs before art, online before deep progression.
 
-### Phase 1 — Visibility polish *(days; no dependencies)*
-- [ ] Brighten the whole scene: lift the night overlay on the deck, raise
-      lantern glow, brighten button wood. Same palette, higher exposure.
-- [ ] Health bar rework: taller, higher-contrast fill, **HP number inside
-      the bar** (outlined for legibility), flash on damage.
+### Phase 1 — Visibility polish *(done)*
+- [x] Brighten the whole scene: lifted the night overlay and vignette,
+      stronger lantern glow. Same palette, higher exposure.
+- [x] Health bar rework: taller, higher-contrast fill, HP number inside the
+      bar, white blink + red border flash on damage, and a draining red
+      ghost segment showing the chunk just lost.
+- [x] Bonus: sea divider (two ships, cannons crossed) and character-themed
+      decks with ambient particles.
 
 ### Phase 2 — Asset production pipeline *(parallel track; art drops in over time)*
 Specs first, then art: the code **prefers sprites and falls back to the

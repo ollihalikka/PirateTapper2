@@ -188,16 +188,19 @@ function waveFor(i){
    charged by clearing waves (faster + cleaner = more charge). */
 const CHARACTERS = [
   { id:'redbeard', name:'Redbeard', title:'the Cannoneer', avatar:0, accentIcon:'💣',
+    theme:{ glow:'#ff7a30', particle:'ember' },
     basic:{ icon:'💣', name:'Pot Shot', cd:8,
             desc:'Lob a cannonball at the enemy deck (6 damage).' },
     ult:  { icon:'💥', name:'Broadside',
             desc:'Rake the enemy deck with five cannonballs (8 damage each).' } },
   { id:'frostjaw', name:'White Death', title:'the Iceberg', avatar:2, accentIcon:'❄️',
+    theme:{ glow:'#a8dcff', particle:'flake' },
     basic:{ icon:'❄️', name:'Cold Snap', cd:8,
             desc:'Flash-freeze the enemy board for 0.8s.' },
     ult:  { icon:'🧊', name:'Deep Freeze',
             desc:'Freeze the enemy board solid for 2.6s — their wave timer keeps burning.' } },
   { id:'inkeye', name:'Inkeye', title:'the Cursed', avatar:1, accentIcon:'🦑',
+    theme:{ glow:'#9a6ec9', particle:'wisp' },
     basic:{ icon:'🦑', name:'Ink Spit', cd:8,
             desc:'Splat one ink blob over the enemy board for 2.5s.' },
     ult:  { icon:'👻', name:'Kraken’s Curse',
@@ -769,6 +772,11 @@ class Board {
     this.nextBlink = 0;
     this.charIdx = null;      // set during the select phase
     this.character = null;
+    this.theme = null;        // character deck theme (glow + ambient particles)
+    this.hpShown = MAX_HP;    // trails hp for the red "ghost" bar segment
+    this.hpFlashUntil = 0;
+    this.nextThemeAt = 0;
+    this._fxLast = 0;
     this.basicCdUntil = 0;
     this.ultCharge = 0;
     this.waveMistap = false;
@@ -792,7 +800,7 @@ class Board {
       const sx = W/old.W, sy = H/old.H;
       for (const b of this.buttons){ b.x*=sx; b.tx*=sx; b.y*=sy; b.ty*=sy; }
     }
-    this.planks = makePlanks(W, H, this.accent);
+    this.planks = makePlanks(W, H, (this.theme && this.theme.glow) || this.accent);
   }
   playArea(){
     return { x0:this.R+14, x1:this.W-this.R-14,
@@ -861,6 +869,10 @@ class Board {
       b.x += (b.tx-b.x)*Math.min(1, dt*10);
       b.y += (b.ty-b.y)*Math.min(1, dt*10);
     }
+    if (this.theme && now >= this.nextThemeAt && !REDUCED_MOTION){
+      this.spawnThemeParticle(now);
+      this.nextThemeAt = now + rand(0.18, 0.5);
+    }
     if (now >= this.nextGruntAt){ // idle pirate chatter, like PlayerFaceGestures
       const moods = ['angry','peek','shock','smile'];
       const m = moods[Math.floor(Math.random()*moods.length)];
@@ -870,6 +882,10 @@ class Board {
     }
   }
   tickFx(now){ // runs every frame, even outside the match
+    const dt = this._fxLast ? Math.min(0.05, now - this._fxLast) : 0;
+    this._fxLast = now;
+    if (this.hpShown > this.hp)   // red ghost segment drains toward real hp
+      this.hpShown = Math.max(this.hp, this.hpShown - ((this.hpShown - this.hp)*3 + 30)*dt);
     if (now >= this.nextBlink){
       this.blinkUntil = now + 0.12;
       this.nextBlink = now + rand(2, 6);
@@ -909,6 +925,27 @@ class Board {
   }
   setAnnounce(text, color, now, secs=1.2, big=true){
     this.announce = { text, color, until: now+secs, t0: now, big };
+  }
+  /* character-flavored ambience drifting over the deck (drawn behind buttons) */
+  spawnThemeParticle(now){
+    const W = this.W, H = this.H;
+    switch (this.theme.particle){
+      case 'ember':
+        this.particles.push({ type:'ember', bg:true, t0:now, life:rand(1.5,2.8),
+          x:rand(20,W-20), y:rand(H*0.5,H*0.95), vx:rand(-8,8), vy:-rand(25,55),
+          size:rand(1.5,3.5), color:'#ffb24d', ph:rand(0,TAU) });
+        break;
+      case 'flake':
+        this.particles.push({ type:'flake', bg:true, t0:now, life:rand(2,3.5),
+          x:rand(10,W-10), y:rand(this.hudH+10,H*0.6), vx:rand(-6,6), vy:rand(18,34),
+          size:rand(1.5,3), color:'#e8f4ff', ph:rand(0,TAU) });
+        break;
+      case 'wisp':
+        this.particles.push({ type:'wisp', bg:true, t0:now, life:rand(2.5,4),
+          x:rand(30,W-30), y:rand(this.hudH+20,H-40), vx:rand(-10,10), vy:rand(-8,8),
+          size:rand(5,12), color:'#9a6ec9', ph:rand(0,TAU) });
+        break;
+    }
   }
   /* --- input; returns nothing, emits events through game --- */
   abilityAt(lx, ly){
@@ -1063,7 +1100,7 @@ function makePlanks(W, H, accent){
     for (let y=0; y<H; y+=h)
       for (let x=0; x<W; x+=w)
         g.drawImage(img, x, y, w, h);
-    g.fillStyle = 'rgba(20,10,2,0.42)';  // dusk it down to night
+    g.fillStyle = 'rgba(20,10,2,0.14)';  // just a touch of dusk
     g.fillRect(0,0,W,H);
   } else {
     g.fillStyle = '#4a3018'; g.fillRect(0,0,W,H);
@@ -1079,11 +1116,11 @@ function makePlanks(W, H, accent){
   }
   // lantern glow at the player's own edge (local y = H)
   let gr = g.createRadialGradient(W/2, H, 10, W/2, H, Math.max(W,H)*0.75);
-  gr.addColorStop(0, accent + '2e'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  gr.addColorStop(0, accent + '4a'); gr.addColorStop(1, 'rgba(0,0,0,0)');
   g.fillStyle = gr; g.fillRect(0,0,W,H);
   // vignette
   gr = g.createRadialGradient(W/2, H/2, Math.min(W,H)*0.3, W/2, H/2, Math.max(W,H)*0.8);
-  gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.45)');
+  gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.22)');
   g.fillStyle = gr; g.fillRect(0,0,W,H);
   return c;
 }
@@ -1109,7 +1146,7 @@ class Game {
     this.W = innerWidth; this.H = innerHeight;
     this.cv.width = this.W*dpr; this.cv.height = this.H*dpr;
     this.ctx.setTransform(dpr,0,0,dpr,0,0);
-    this.divH = clamp(this.H*0.06, 34, 56);
+    this.divH = clamp(this.H*0.085, 44, 78);
     this.bH = (this.H - this.divH)/2;
     this.divTop = this.bH;
     this.divBot = this.bH + this.divH;
@@ -1151,6 +1188,8 @@ class Game {
     b.character = CHARACTERS[ci];
     b.avatar = AVATARS[CHARACTERS[ci].avatar];
     b.voice = b.avatar.voice;
+    b.theme = CHARACTERS[ci].theme;
+    b.planks = makePlanks(b.W, b.H, b.theme.glow);  // deck takes the character's glow
     b.setMood('smile', 1.4, now);
     play('click', 0.7);
     play(b.voice + '-smile', 0.9);
@@ -1227,6 +1266,7 @@ class Game {
     if (!this.running) return;
     const b = this.boards[boardIdx];
     b.hp = Math.max(0, b.hp - amt);
+    b.hpFlashUntil = performance.now()/1000 + 0.4;
     const fx = x==null ? b.W - 60 : x;
     const fy = y==null ? b.hudH + 26 : y;
     b.addFloat('-' + amt, '#ff5a4d', fx, fy, performance.now()/1000);
@@ -1292,29 +1332,85 @@ class Game {
     g.rotate(Math.PI);
     this.renderBoard(g, this.boards[1], now);
     g.restore();
-    this.renderDivider(g);
+    this.renderDivider(g, now);
   }
-  renderDivider(g){
-    g.fillStyle = '#17100b';
-    g.fillRect(0, this.divTop, this.W, this.divH);
-    g.fillStyle = 'rgba(232,196,105,0.55)';
-    g.fillRect(0, this.divTop, this.W, 1.5);
-    g.fillRect(0, this.divBot-1.5, this.W, 1.5);
-    g.strokeStyle = 'rgba(232,196,105,0.28)';   // rope
-    g.lineWidth = 3; g.setLineDash([9, 7]);
+  /* The gap between the boards is open sea: two ships side by side,
+     hulls at the water's edge, cannons run out and aimed at each other. */
+  renderDivider(g, now){
+    const y0 = this.divTop, h = this.divH, W = this.W;
+    const sea = g.createLinearGradient(0, y0, 0, y0+h);
+    sea.addColorStop(0, '#16465f'); sea.addColorStop(0.5, '#1f6285'); sea.addColorStop(1, '#16465f');
+    g.fillStyle = sea;
+    g.fillRect(0, y0, W, h);
+    // rolling wave lines
+    for (let i=0;i<3;i++){
+      g.strokeStyle = `rgba(190,228,246,${0.12+i*0.06})`;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      const yy = y0 + h*(0.32+i*0.18), amp = h*0.06;
+      const drift = REDUCED_MOTION ? 0 : now*(22+i*14)*(i%2 ? -1 : 1);
+      const wl = 46+i*20;
+      for (let x=0; x<=W; x+=8){
+        const y = yy + Math.sin((x+drift)/wl*TAU)*amp;
+        x === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    // the two hulls, gently bobbing out of phase
+    const bobT = REDUCED_MOTION ? 0 : Math.sin(now*1.3)*1.4;
+    const bobB = REDUCED_MOTION ? 0 : Math.sin(now*1.3+2.2)*1.4;
+    this.renderHull(g, y0 + bobT, +1, this.boards[1], now);      // top ship
+    this.renderHull(g, this.divBot + bobB, -1, this.boards[0], now); // bottom ship
+  }
+  /* One ship's side at the waterline: hull planks, gunports, a trim stripe
+     in the character's color, cannons run out toward the enemy, and foam
+     where hull meets water. dir +1 juts down into the sea (top ship),
+     -1 juts up (bottom ship). */
+  renderHull(g, edgeY, dir, b, now){
+    const W = this.W, hullH = this.divH*0.28, cannonL = this.divH*0.30;
+    const y = dir === 1 ? edgeY : edgeY - hullH;
+    const deckSide = dir === 1 ? y : y+hullH, waterSide = dir === 1 ? y+hullH : y;
+    const hull = g.createLinearGradient(0, deckSide, 0, waterSide);
+    hull.addColorStop(0, '#5c3d20'); hull.addColorStop(0.7, '#3f2a14');
+    hull.addColorStop(1, '#2b1c0d');                              // dark at the waterline
+    g.fillStyle = hull;
+    g.fillRect(0, y, W, hullH);
+    g.fillStyle = (b.theme && b.theme.glow) || b.accent;          // trim stripe (deck side)
+    g.globalAlpha = 0.85;
+    g.fillRect(0, dir === 1 ? y+1 : y+hullH-3.5, W, 2.5);
+    g.globalAlpha = 1;
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1;           // plank seams
+    for (let x=W*0.06; x<W; x+=W*0.09){
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x, y+hullH); g.stroke();
+    }
+    // cannons: interleaved between the two ships so the guns cross mid-water
+    const n = Math.max(3, Math.round(W/150));
+    for (let i=0;i<n;i++){
+      const cx = W*(i + (dir === 1 ? 0.75 : 0.25))/n;
+      const base = waterSide, tip = base + dir*cannonL;
+      g.fillStyle = 'rgba(12,8,4,0.9)';                           // gunport
+      g.fillRect(cx-9, dir === 1 ? base-hullH*0.55 : base, 18, hullH*0.55);
+      g.fillStyle = '#23272d';                                    // tapered barrel
+      g.beginPath();
+      g.moveTo(cx-6, base); g.lineTo(cx+6, base);
+      g.lineTo(cx+4, tip); g.lineTo(cx-4, tip);
+      g.closePath(); g.fill();
+      g.fillStyle = '#31363e';                                    // breech ring
+      g.fillRect(cx-7, dir === 1 ? base : base-3, 14, 3);
+      g.fillStyle = '#31363e';                                    // muzzle rim
+      g.beginPath(); g.arc(cx, tip, 5.5, 0, TAU); g.fill();
+      g.fillStyle = '#0d0f12';                                    // bore
+      g.beginPath(); g.arc(cx, tip, 3, 0, TAU); g.fill();
+    }
+    // foam licking the waterline
+    g.strokeStyle = 'rgba(224,242,250,0.55)'; g.lineWidth = 2;
     g.beginPath();
-    g.moveTo(0, this.divTop + this.divH/2);
-    g.lineTo(this.W, this.divTop + this.divH/2);
+    const drift = REDUCED_MOTION ? 0 : now*30*dir;
+    for (let x=0; x<=W; x+=7){
+      const fy = waterSide + dir*(1.5 + Math.abs(Math.sin((x+drift)/26))*2.5);
+      x === 0 ? g.moveTo(x, fy) : g.lineTo(x, fy);
+    }
     g.stroke();
-    g.setLineDash([]);
-    const cx = this.W/2, cy = this.divTop + this.divH/2, er = this.divH*0.42;
-    g.fillStyle = '#17100b';
-    g.beginPath(); g.arc(cx, cy, er+7, 0, TAU); g.fill();
-    g.strokeStyle = 'rgba(232,196,105,0.6)'; g.lineWidth = 1.5;
-    g.beginPath(); g.arc(cx, cy, er+4, 0, TAU); g.stroke();
-    g.font = `${Math.round(er*1.35)}px serif`;
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText('⚔️', cx, cy+1);
   }
   renderBoard(g, b, now){
     if (now < b.shakeUntil && !REDUCED_MOTION){
@@ -1342,10 +1438,12 @@ class Game {
         g.beginPath(); g.arc(fx, b.hudH+5.5, 3.4+Math.sin(now*30)*1.2, 0, TAU); g.fill();
       }
     }
+    // character ambience floats behind the buttons
+    for (const p of b.particles) if (p.bg) this.renderParticle(g, p, now);
     // buttons
     for (const bt of b.buttons) this.renderButton(g, b, bt, now);
-    // particles
-    for (const p of b.particles) this.renderParticle(g, p, now);
+    // effect particles
+    for (const p of b.particles) if (!p.bg) this.renderParticle(g, p, now);
     // kraken ink sits on top of everything in play
     for (const k of b.inkBlobs){
       const age = now - k.t0, left = k.until - now;
@@ -1487,6 +1585,27 @@ class Game {
       g.beginPath();
       g.arc(p.x + p.vx*t*p.life, p.y + p.vy*t*p.life, p.size*(0.6+t), 0, TAU);
       g.fill();
+    } else if (p.type === 'ember'){
+      g.globalAlpha = (1-t)*(0.5 + 0.4*Math.sin(now*20 + p.ph));
+      g.fillStyle = p.color;
+      g.beginPath();
+      g.arc(p.x + p.vx*t*p.life + Math.sin(now*3+p.ph)*4, p.y + p.vy*t*p.life,
+            p.size*(1-t*0.5), 0, TAU);
+      g.fill();
+    } else if (p.type === 'flake'){
+      g.globalAlpha = (1-t)*0.75;
+      g.fillStyle = p.color;
+      g.beginPath();
+      g.arc(p.x + p.vx*t*p.life + Math.sin(now*2+p.ph)*7, p.y + p.vy*t*p.life,
+            p.size, 0, TAU);
+      g.fill();
+    } else if (p.type === 'wisp'){
+      g.globalAlpha = Math.sin(Math.min(1,t)*Math.PI)*0.22;
+      g.fillStyle = p.color;
+      g.beginPath();
+      g.arc(p.x + p.vx*t*p.life, p.y + p.vy*t*p.life,
+            p.size*(1 + 0.25*Math.sin(now*3+p.ph)), 0, TAU);
+      g.fill();
     }
     g.globalAlpha = 1;
   }
@@ -1498,34 +1617,48 @@ class Game {
     drawPirate(g, b.avatar, b.hudH*0.85, b.hudH*0.66, b.hudH*0.55, now,
                b.moodNow(now), now < b.blinkUntil);
     const bx = Math.round(b.hudH*1.85), bw = b.W - bx - 144,
-          bh = Math.max(14, b.hudH*0.36), by = (b.hudH-bh)/2;
-    g.fillStyle = 'rgba(0,0,0,0.55)';
+          bh = Math.max(18, b.hudH*0.52), by = (b.hudH-bh)/2;
+    const flash = clamp((b.hpFlashUntil - now)/0.4, 0, 1);
+    g.fillStyle = 'rgba(0,0,0,0.6)';
     g.fillRect(bx, by, bw, bh);
-    const pct = b.hp / MAX_HP;
-    const hpColor = pct > 0.5 ? '#58b06c' : pct > 0.25 ? '#e0a23c' : '#e0483f';
+    const pct = b.hp / MAX_HP, shownPct = b.hpShown / MAX_HP;
+    if (shownPct > pct){                                   // red ghost: damage just taken
+      g.fillStyle = '#ff5a3d';
+      g.fillRect(bx + bw*pct, by, bw*(shownPct-pct), bh);
+    }
+    const hpColor = pct > 0.5 ? '#4fc06c' : pct > 0.25 ? '#f0b03c' : '#f0523f';
     g.fillStyle = hpColor;
     g.fillRect(bx, by, bw*pct, bh);
-    g.fillStyle = 'rgba(255,255,255,0.16)';
+    g.fillStyle = 'rgba(255,255,255,0.22)';
     g.fillRect(bx, by, bw*pct, bh*0.42);
-    g.strokeStyle = 'rgba(232,196,105,0.75)'; g.lineWidth = 1.5;
+    if (flash > 0){                                        // white blink on hit
+      g.fillStyle = `rgba(255,255,255,${flash*0.4})`;
+      g.fillRect(bx, by, bw, bh);
+    }
+    g.strokeStyle = flash > 0 ? `rgba(255,120,90,${0.5+flash*0.5})` : 'rgba(232,196,105,0.85)';
+    g.lineWidth = flash > 0 ? 2.5 : 1.5;
     g.strokeRect(bx, by, bw, bh);
-    g.strokeStyle = 'rgba(0,0,0,0.3)';
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1;
     for (let i=1;i<10;i++){
       g.beginPath();
       g.moveTo(bx + bw*i/10, by); g.lineTo(bx + bw*i/10, by+bh);
       g.stroke();
     }
-    g.font = `700 ${Math.round(bh*0.72)}px -apple-system, "Segoe UI", sans-serif`;
-    g.textAlign='left'; g.textBaseline='middle';
+    g.textBaseline='middle';
     const hudName = b.character ? b.character.name.toUpperCase() : PLAYER_NAME[b.idx];
-    g.strokeStyle = 'rgba(0,0,0,0.65)'; g.lineWidth = 3;
-    g.strokeText(hudName, bx+7, by+bh/2+1);
+    g.font = `700 ${Math.round(bh*0.56)}px -apple-system, "Segoe UI", sans-serif`;
+    g.textAlign='left';
+    g.strokeStyle = 'rgba(0,0,0,0.7)'; g.lineWidth = 3;
+    g.strokeText(hudName, bx+8, by+bh/2+1);
     g.fillStyle = b.accent;
-    g.fillText(hudName, bx+7, by+bh/2+1);
+    g.fillText(hudName, bx+8, by+bh/2+1);
+    // the HP number lives inside the bar, big and unmissable
+    g.font = `800 ${Math.round(bh*0.82)}px -apple-system, "Segoe UI", sans-serif`;
     g.textAlign='right';
-    g.strokeText(String(b.hp), bx+bw-7, by+bh/2+1);
-    g.fillStyle = '#f0e3c0';
-    g.fillText(String(b.hp), bx+bw-7, by+bh/2+1);
+    g.strokeStyle = 'rgba(0,0,0,0.75)'; g.lineWidth = 4;
+    g.strokeText(String(b.hp), bx+bw-8, by+bh/2+1);
+    g.fillStyle = '#ffffff';
+    g.fillText(String(b.hp), bx+bw-8, by+bh/2+1);
     g.font = `600 ${Math.round(bh*0.78)}px Georgia, serif`;
     g.fillStyle = '#e8c469';
     g.fillText('WAVE ' + (b.waveIndex+1), b.W-14, b.hudH/2+1);
