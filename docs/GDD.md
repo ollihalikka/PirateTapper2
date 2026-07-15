@@ -298,63 +298,130 @@ Current risks and where to tune:
 Balance philosophy: chaos is the product; tune for "outraged laughter", not
 for fairness-on-paper.
 
+### Open question: should waves speed up as a PvP match progresses?
+
+Ramping by *wave number* beyond the current schedule is the wrong axis — the
+faster player would face harder waves than the slower one, punishing the
+winner. The promising variant is a **shared, time-based "storm" ramp**:
+after ~2.5 minutes of match time, both players' clear windows shrink a few
+percent every 30 s, symmetrically. It caps match length, raises late-game
+drama, and makes the −30 auto-clear more common exactly when health is low.
+Needs playtesting (Phase 5): implement behind a config flag; watch the
+match-length distribution and whether comebacks still happen under the storm.
+
 ---
 
-## 11. Monetization direction (not in MVP)
+## 11. Retention, progression & economy
 
-Characters are the monetization unit — players buy pirates whose **visuals,
-voice, and kit** appeal to them. The code is already shaped for this:
+### What keeps players coming back
 
-- New character = one `CHARACTERS` entry (kit) + one `AVATARS` entry
-  (look + voice). No rendering or game-logic changes.
-- Assets per character: portrait/animation set, ~8+ voice lines
-  (4 moods × 2 takes), 2 ability definitions with icons.
-- Keep kits **sidegrades, not upgrades** — paid characters must not be
-  strictly stronger (chaos variety sells; pay-to-win kills a 1v1 game).
+Layered, from strongest to lightest:
 
-Candidate fourth kit already in the engine: Gunpowder pirate
-(basic: powder 1 button / ult: powder everything + a fuse).
+1. **Rivalry.** A 2-minute chaos duel's natural retention is "run it back, I
+   want revenge." Everything that feeds rematch culture is retention work and
+   cheap: head-to-head records vs. a specific opponent, post-match stat cards
+   ("perfect clears 4–1", "fastest wave 1.9 s"), instant rematch.
+2. **Mastery.** Per-character stats and the ult economy's skill expression
+   give a visible "I'm getting better" curve. Later: ranked ladder.
+3. **Collection & status.** Characters, skins, voice lines, and **ships** —
+   cosmetics the *opponent must look at* are status goods, the strongest buy
+   motivation in a 1v1 game.
+4. **Cadence.** Daily first-win bonus; one weekly challenge ("win with Inkeye
+   without using a basic"). Light, never chore-like.
+
+### Progression system (design)
+
+- **Character XP:** playing a character earns XP for that character
+  (win > loss; perfect-clear and speed bonuses). Levels unlock **alternate
+  abilities as sidegrades, not upgrades** — a leveled character has more
+  *options* (pick basic/ult loadout pre-match), never more power. Power
+  behind grind breaks PvP and churns new players. Cosmetic milestones
+  (titles, portrait frames, victory taunts) mark levels too.
+  - Example: Redbeard L5 unlocks *Chain Shot* (2 weaker cannonballs that
+    also nudge button positions) as an alternative to Pot Shot.
+- **Currency:** earned by both players every match (winner ~2×, bonuses for
+  perfect clears and challenges). Spent on: new characters, skins, voice /
+  taunt packs, and **ships** — board themes (deck texture, divider style,
+  ambient audio) rendered like any other theme object.
+- **Persistence:** local-first (localStorage profile) so progression ships
+  before accounts exist; migrate to server profiles when online lands.
+- Premium currency, if ever added, buys cosmetics only.
+
+The code is already shaped for the content side: new character = one
+`CHARACTERS` entry (kit) + one `AVATARS` entry (look + voice); a ship = a
+theme entry (textures + palette + ambience). Candidate fourth kit already in
+the engine: Gunpowder pirate (basic: powder 1 button / ult: powder
+everything).
 
 ---
 
 ## 12. Roadmap
 
-### Near term
-- [ ] Playtest & balance pass on real tablets (wave pacing without numbers,
-      freeze durations, ult frequency).
-- [ ] Juggle/freeze/ghost bespoke sound recordings (currently synth).
-- [ ] Character-select polish: kit tooltips or a "hold to read abilities"
-      panel on the card.
-- [ ] Pause/forfeit; mute toggle.
+Phased by dependency: specs before art, online before deep progression.
 
-### Online multiplayer (the reason for the remake)
-- [ ] WebSocket matchmaking + relay server (room codes first, then quick match).
-- [ ] Seeded wave generation + synced match start.
-- [ ] Timestamp-ordered damage resolution; disconnect/reconnect handling.
-- [ ] Each client renders own board fullscreen + enemy status strip
-      (HP, wave, ult charge, avatar reactions).
+### Phase 1 — Visibility polish *(days; no dependencies)*
+- [ ] Brighten the whole scene: lift the night overlay on the deck, raise
+      lantern glow, brighten button wood. Same palette, higher exposure.
+- [ ] Health bar rework: taller, higher-contrast fill, **HP number inside
+      the bar** (outlined for legibility), flash on damage.
+
+### Phase 2 — Asset production pipeline *(parallel track; art drops in over time)*
+Specs first, then art: the code prefers sprites and falls back to the current
+canvas drawing, so the game never blocks on art.
+- [ ] Asset specs doc: file formats, sizes, naming (`docs/ASSET_SPECS.md`).
+- [ ] **Icon assets** — button marks + ability icons, transparent PNG 256 px,
+      one file per mark; slots in behind `drawButtonFace`.
+- [ ] **Character assets** — portrait sprite sheet per character: 6 mood
+      states (idle/blink/angry/shock/peek/smile) × 2–3 frames, fixed grid.
+      The reaction system already keys on these mood names.
+- [ ] **Character animations** — frame cycling per mood row; cast + victory
+      poses as extra rows later.
+- [ ] **Character sounds** — per-character recording spec: 4 moods × 2–3
+      takes + ~4 taunt lines, mono, normalized; routed via `AVATARS.voice`.
+- [ ] Best authentic source: bake the original 3D pirate models to sprite
+      sheets in Unity (camera + animation capture per character).
+
+### Phase 3 — Device vs Device *(the milestone the remake was architected for)*
+- [ ] Determinism audit: all gameplay randomness through one seeded RNG.
+- [ ] WebSocket server: create/join by **room code** (quick match later),
+      event relay, shared seed + synced match start.
+- [ ] Protocol = the existing choke points (`applyDamage`, `useAbility`) +
+      wave/state events, **ordered by client timestamps** so ping never
+      decides a photo-finish.
+- [ ] Remote layout: own board fullscreen; enemy as a status strip (HP,
+      wave, ult ring, their avatar reacting to what you do to them).
+- [ ] Disconnect/reconnect handling; latency feel testing on real phones.
 - [ ] Emotes (tap your own avatar to taunt — voice grunt on enemy screen).
 
-### Content
-- [ ] 4th+ characters (gunpowder kit ready in engine).
-- [ ] Wave schedules as data (JSON) — the original code already wished for
-      this (`CreateWaves` comment); enables game modes and difficulty presets.
-- [ ] Game modes: FastClickMode (unfinished in the Unity original — no
-      order, pure speed), best-of-3 rounds, sudden-death mode.
-- [ ] Single-player practice vs. simple bot (taps with configurable
-      delay/error rate) — also useful for balance sims.
-- [ ] Original 3D pirate characters baked to sprite sheets in Unity and
-      dropped in as premium avatar skins.
+### Phase 4 — Progression & economy v1 *(after Phase 3; local-first parts earlier)*
+- [ ] Local profile: per-character XP, currency, unlock state (localStorage).
+- [ ] Match rewards + post-match stat card (doubles as rivalry fuel).
+- [ ] Loadout picker on character select (unlocked ability variants).
+- [ ] First purchasables: 4th character, one skin per character, one ship.
+- [ ] Server profiles once online accounts exist.
 
-### Tech
-- [ ] Extract the inline script into modules with a tiny build step once the
-      multiplayer server lands (keep the single-file artifact as a build
-      output).
-- [ ] Deterministic simulation audit (all gameplay randomness through one
-      seeded RNG) before netcode.
+### Phase 5 — Live tuning & retention systems *(ongoing once 3+4 exist)*
+- [ ] **Storm mode playtest** (see §10 open questions): time-based symmetric
+      ramp behind a config flag; measure match-length distribution, fail
+      rates, comeback frequency.
+- [ ] Head-to-head records, daily first win, weekly challenge.
+- [ ] Ranked ladder / seasonal reset if the population supports it.
+
+### Content backlog (any phase)
+- [ ] Wave schedules as data (JSON) — the original `CreateWaves` comment
+      wished for this; enables modes and difficulty presets.
+- [ ] Game modes: FastClickMode (unfinished in the Unity original — no
+      order, pure speed), best-of-3 rounds, sudden death.
+- [ ] Single-player practice vs. a bot (configurable delay/error rate) —
+      doubles as the balance-sim engine.
+- [ ] Juggle/freeze/ghost bespoke sound recordings (currently synth).
+- [ ] Character-select kit tooltips; pause/forfeit; mute toggle.
+
+### Tech backlog
+- [ ] Extract the inline script into modules with a tiny build step when the
+      multiplayer server lands (keep the single-file artifact as an output).
 - [ ] Automated balance sims: scripted bots at various skill levels playing
-      thousands of matches (the Playwright test harness in
-      `scratchpad/test-game.mjs` is the seed of this).
+      thousands of matches (the Playwright harness is the seed of this).
 
 ---
 
