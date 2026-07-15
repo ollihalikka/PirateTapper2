@@ -4,15 +4,20 @@ A browser remake of the original Unity game, rebuilt for the road to online mult
 
 ## Run it
 
-Open `index.html` in any browser — it's fully self-contained (no build step, no
-external assets; all art is drawn on canvas and all audio is synthesized with
-WebAudio). Best experienced on a touchscreen laid flat between two players.
+Open `index.html` in any browser — no build step needed; it loads the art and
+audio from `assets/` (originals from the Unity project's `Assets/` folder,
+transcoded for the web). Best experienced on a touchscreen laid flat between
+two players.
 
 ## Gameplay
 
 Two players share the screen, one half each (the top half is rotated 180° so the
-players sit facing each other). Buttons surface in waves; pop them in numeric
-order. Every correct pop damages the opponent. Ported from the Unity original:
+players sit facing each other). Buttons surface in waves, one by one — watch the
+order they appear, then pop them in that same order. There are no numbers or
+hints: the eight distinct button faces (skull, anchor, coin, bottle, dynamite,
+pistol, rudder, cannonballs — the same set as the Unity `Poppable_Buttons`
+prefabs) are what your memory latches on to. Every correct pop damages the
+opponent. Ported from the Unity original:
 300 HP, the 20-wave schedule from `GameManager.CreateWaves()` (endless overtime
 after wave 20), −30 for letting a wave time out, −10 for wrong or stray taps.
 

@@ -54,6 +54,11 @@
     text-align:left; display:grid; gap:8px;
   }
   .rules b{ color:var(--parch); font-weight:600; }
+  #facesPreview{ display:block; width:100%; max-width:420px; margin:2px auto 0; height:auto; }
+  .faces-caption{
+    font-family:Georgia, serif; font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--gold-dim); margin-top:6px;
+  }
   .legend{
     margin:clamp(12px,2.5vh,22px) 0; border-top:1px solid rgba(232,196,105,.25); border-bottom:1px solid rgba(232,196,105,.25);
     padding:clamp(10px,2vh,18px) 2px;
@@ -91,17 +96,19 @@
   <div class="overlay" id="startOverlay">
     <div class="panel">
       <div class="flag">🏴‍☠️</div>
-      <div class="eyebrow">A duel of speed &amp; sabotage</div>
+      <div class="eyebrow">A duel of memory &amp; sabotage</div>
       <h1>Pirate Tapper<span class="vs">— showdown —</span></h1>
       <div class="rules">
         <div>⚓ <b>Two pirates, one screen.</b> Each of ye taps on yer own half — sit facing each other.</div>
-        <div>⚓ Buttons surface in waves. <b>Pop them in order, 1 → 2 → 3…</b> Every correct pop cannonballs the enemy's health.</div>
-        <div>⚓ Too slow to clear a wave? <b>−30 health.</b> Tap the wrong button or bare deck? <b>−10.</b></div>
+        <div>⚓ Buttons surface one by one — <b>watch the order they appear.</b> Then pop them in that same order. No numbers, no hints: only the faces, and yer memory.</div>
+        <div>⚓ Every correct pop cannonballs the enemy's health. Too slow to clear a wave? <b>−30.</b> Wrong button or bare deck? <b>−10.</b></div>
         <div>⚓ Yer six <b>dirty tricks</b> sit by yer edge. One use each. No mercy.</div>
       </div>
+      <canvas id="facesPreview"></canvas>
+      <div class="faces-caption">The eight buttons of the deep</div>
       <div class="legend" id="legend"></div>
       <button class="btn" id="startBtn">Start the Showdown</button>
-      <div class="hint">Best on a touchscreen laid flat between two players · mouse works for practice</div>
+      <div class="hint">Best on a touchscreen laid flat between two players · mouse works for practice · sound on!</div>
     </div>
   </div>
 
@@ -119,7 +126,8 @@
 <script>
 'use strict';
 /* ============================================================
-   PIRATE TAPPER SHOWDOWN — web remake of the Unity original.
+   PIRATE TAPPER SHOWDOWN — web remake of the Unity original,
+   using the original repository's art & audio assets.
    Architecture note (multiplayer-ready):
    - Each Board is an independent simulation of one player's half.
    - Everything that crosses between players (damage, power-ups)
@@ -164,14 +172,83 @@ const POWERUPS = [
   {id:'cannon', icon:'💣', name:'Cannon Blast',     desc:'Three cannonballs, 8 damage apiece, straight to their deck.'},
   {id:'powder', icon:'🛢️', name:'Gunpowder Barrel', desc:'Coat 3 enemy buttons — popping one costs them 12 health.'},
   {id:'ink',    icon:'🦑', name:'Kraken Ink',       desc:'Splat ink over their board for 3.5s, hiding what’s beneath.'},
-  {id:'ghost',  icon:'👻', name:'Ghost Curse',      desc:'Their numbers turn to ??? for 3s. Hope they were counting.'},
+  {id:'ghost',  icon:'👻', name:'Ghost Curse',      desc:'Wipes the faces off their buttons for 3s. Pure memory.'},
 ];
 
-const DISC_COLORS = ['#2fb3a3','#e0a23c','#d34f5e','#8e6fc7','#4a8fd0','#6fae4e'];
 const PLAYER_ACCENT = ['#39b795','#e0483f'];
 const PLAYER_NAME = ['PLAYER 1','PLAYER 2'];
 
-/* ---------------- audio (all synthesized) ---------------- */
+/* ---------------- assets ---------------- */
+/* The artifact build replaces null with {filename: dataURI} to make a
+   single self-contained file; the repo version loads from ./assets/. */
+const ASSET_INLINE = null;
+const assetUrl = f => (ASSET_INLINE && ASSET_INLINE[f]) || ('assets/' + f);
+
+const IMG = { planks:null, coin:null };
+function loadImages(done){
+  let left = 2;
+  const one = ()=>{ if (--left === 0) done(); };
+  IMG.planks = new Image();
+  IMG.planks.onload = one; IMG.planks.onerror = ()=>{ IMG.planks = null; one(); };
+  IMG.planks.src = assetUrl('planks.jpg');
+  IMG.coin = new Image();
+  IMG.coin.onload = one; IMG.coin.onerror = ()=>{ IMG.coin = null; one(); };
+  IMG.coin.src = assetUrl('coin.png');
+}
+
+/* Sound effects: original repo recordings, played via pooled <audio>. */
+const SFX_FILES = {
+  pop:  ['pop1.mp3','pop2.mp3'],
+  wrong:['wrong.mp3'],
+  boom: ['boom1.mp3','boom2.mp3','boom3.mp3','boom4.mp3'],
+  click:['click1.mp3'],
+  cast: ['click2.mp3'],
+};
+for (const p of ['p1','p2'])
+  for (const e of ['angry','peek','shock','smile'])
+    SFX_FILES[`${p}-${e}`] = [`${p}-${e}1.mp3`, `${p}-${e}2.mp3`];
+
+const sfxCache = {};
+function play(name, vol=1, rate=1){
+  const files = SFX_FILES[name];
+  if (!files) return;
+  const f = files[Math.floor(Math.random()*files.length)];
+  let base = sfxCache[f];
+  if (!base){ base = new Audio(assetUrl(f)); base.preload = 'auto'; sfxCache[f] = base; }
+  const el = base.cloneNode();
+  el.volume = clamp(vol, 0, 1);
+  try { el.playbackRate = rate; } catch(e){}
+  el.play().catch(()=>{});
+}
+function preloadSfx(){
+  for (const files of Object.values(SFX_FILES)) for (const f of files){
+    if (!sfxCache[f]){ const a = new Audio(assetUrl(f)); a.preload='auto'; sfxCache[f]=a; }
+  }
+}
+
+/* Music: the two repo tracks alternating forever, exactly like the
+   Unity MusicPlayer, over a low sea-waves ambience. */
+const Music = {
+  started:false, i:0, el:null, amb:null,
+  tracks:['music-tavern.mp3','music-battle.mp3'],
+  start(){
+    if (this.started) return;
+    this.started = true;
+    this.el = new Audio(assetUrl(this.tracks[0]));
+    this.el.volume = 0.5;
+    this.el.addEventListener('ended', ()=>{
+      this.i = 1 - this.i;
+      this.el.src = assetUrl(this.tracks[this.i]);
+      this.el.play().catch(()=>{});
+    });
+    this.el.play().catch(()=>{});
+    this.amb = new Audio(assetUrl('sea-waves.mp3'));
+    this.amb.loop = true; this.amb.volume = 0.22;
+    this.amb.play().catch(()=>{});
+  }
+};
+
+/* Synth accents for effects that have no repo recording. */
 const Snd = {
   ctx:null,
   ensure(){
@@ -195,42 +272,158 @@ const Snd = {
     osc.connect(g).connect(this.ctx.destination);
     osc.start(t0); osc.stop(t0+dur+0.05);
   },
-  noise(o){
-    if (!this.ctx) return;
-    const {dur=0.3,vol=0.3,freq=800,delay=0} = o;
-    const t0 = this.ctx.currentTime + delay;
-    const len = Math.max(1, Math.floor(this.ctx.sampleRate*dur));
-    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i=0;i<len;i++) d[i] = (Math.random()*2-1) * (1 - i/len);
-    const src = this.ctx.createBufferSource(); src.buffer = buf;
-    const fl = this.ctx.createBiquadFilter(); fl.type='lowpass'; fl.frequency.value=freq;
-    const g = this.ctx.createGain(); g.gain.value = vol;
-    src.connect(fl).connect(g).connect(this.ctx.destination);
-    src.start(t0);
-  },
-  pop(k){ this.tone({f:340+k*55, f2:(340+k*55)*2.1, dur:0.09, type:'sine', vol:0.25});
-          this.noise({dur:0.05, vol:0.12, freq:2400}); },
-  wrong(){ this.tone({f:140, f2:88, dur:0.18, type:'square', vol:0.16}); },
-  fail(){ this.tone({f:230, f2:65, dur:0.55, type:'sawtooth', vol:0.2}); },
-  clear(){ this.tone({f:660, dur:0.1, vol:0.16}); this.tone({f:990, dur:0.16, vol:0.16, delay:0.09}); },
-  boom(){ this.noise({dur:0.5, vol:0.5, freq:320}); this.tone({f:150, f2:38, dur:0.4, type:'sine', vol:0.4}); },
   freeze(){ this.tone({f:1150, f2:2300, dur:0.3, type:'triangle', vol:0.14});
             this.tone({f:1720, f2:3400, dur:0.35, type:'sine', vol:0.09, delay:0.06}); },
-  ink(){ this.noise({dur:0.35, vol:0.3, freq:500}); this.tone({f:220, f2:90, dur:0.3, type:'sine', vol:0.2}); },
   ghost(){ this.tone({f:520, f2:240, dur:0.55, type:'triangle', vol:0.13});
            this.tone({f:780, f2:390, dur:0.55, type:'sine', vol:0.07, delay:0.05}); },
   juggle(){ [480,640,560,760].forEach((f,i)=>this.tone({f, dur:0.07, type:'square', vol:0.09, delay:i*0.07})); },
-  powder(){ this.noise({dur:0.12, vol:0.25, freq:1500});
-            this.noise({dur:0.12, vol:0.2, freq:1200, delay:0.1});
-            this.tone({f:300, f2:120, dur:0.2, type:'sawtooth', vol:0.1, delay:0.05}); },
-  explode(){ this.noise({dur:0.4, vol:0.45, freq:600}); this.tone({f:200, f2:50, dur:0.3, type:'square', vol:0.2}); },
+  ink(){ this.tone({f:220, f2:90, dur:0.3, type:'sine', vol:0.2}); },
+  clear(){ this.tone({f:660, dur:0.1, vol:0.14}); this.tone({f:990, dur:0.16, vol:0.14, delay:0.09}); },
   deny(){ this.tone({f:200, dur:0.08, type:'square', vol:0.1}); },
-  fanfare(){ [523,659,784,1047].forEach((f,i)=>this.tone({f, dur:0.28, type:'triangle', vol:0.2, delay:i*0.13}));
-             this.noise({dur:0.6, vol:0.2, freq:900, delay:0.5}); },
+  fanfare(){ [523,659,784,1047].forEach((f,i)=>this.tone({f, dur:0.28, type:'triangle', vol:0.2, delay:i*0.13})); },
 };
 
 const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------------- the eight button faces ----------------
+   Same set as the Unity prefabs (Poppable_Buttons): skull, anchor,
+   coin, bottle, dynamite, pistol, rudder, cannonballs. The coin is
+   the real texture from Buttons2Diffuse; the rest are flat painted
+   marks in the same tone-on-tone style. No numbers anywhere —
+   the faces ARE the memory hooks. */
+const BUTTON_KINDS = [
+  { id:'skull',    disc:'#39445a', draw(g,x,y,s){
+      const ink='#d8dee8';
+      g.fillStyle=ink;
+      g.beginPath(); g.arc(x, y-0.08*s, 0.5*s, 0, TAU); g.fill();            // cranium
+      g.fillRect(x-0.3*s, y+0.1*s, 0.6*s, 0.42*s);                           // jaw
+      g.fillStyle=this.disc;
+      g.beginPath(); g.arc(x-0.2*s, y-0.14*s, 0.13*s, 0, TAU); g.fill();     // eyes
+      g.beginPath(); g.arc(x+0.2*s, y-0.14*s, 0.13*s, 0, TAU); g.fill();
+      g.beginPath();                                                          // nose
+      g.moveTo(x, y+0.02*s); g.lineTo(x-0.07*s, y+0.16*s); g.lineTo(x+0.07*s, y+0.16*s);
+      g.closePath(); g.fill();
+      g.strokeStyle=this.disc; g.lineWidth=0.05*s;                            // teeth
+      for (const dx of [-0.15,0,0.15]){
+        g.beginPath(); g.moveTo(x+dx*s, y+0.3*s); g.lineTo(x+dx*s, y+0.5*s); g.stroke();
+      }
+  }},
+  { id:'anchor',   disc:'#2e8577', draw(g,x,y,s){
+      const ink='#0f3d36';
+      g.strokeStyle=ink; g.lineWidth=0.13*s; g.lineCap='round';
+      g.beginPath(); g.arc(x, y-0.52*s, 0.14*s, 0, TAU); g.stroke();          // ring
+      g.beginPath(); g.moveTo(x, y-0.38*s); g.lineTo(x, y+0.42*s); g.stroke();// shaft
+      g.beginPath(); g.moveTo(x-0.3*s, y-0.18*s); g.lineTo(x+0.3*s, y-0.18*s); g.stroke(); // crossbar
+      g.beginPath(); g.arc(x, y+0.02*s, 0.46*s, Math.PI*0.15, Math.PI*0.85); g.stroke();   // arms
+      g.fillStyle=ink;                                                        // flukes
+      g.beginPath(); g.moveTo(x-0.44*s, y+0.2*s); g.lineTo(x-0.6*s, y+0.06*s); g.lineTo(x-0.32*s, y+0.02*s); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(x+0.44*s, y+0.2*s); g.lineTo(x+0.6*s, y+0.06*s); g.lineTo(x+0.32*s, y+0.02*s); g.closePath(); g.fill();
+  }},
+  { id:'coin',     disc:'#c9a53a', draw(g,x,y,s){
+      if (IMG.coin){
+        g.save();
+        g.beginPath(); g.arc(x, y, s, 0, TAU); g.clip();
+        g.drawImage(IMG.coin, x-s, y-s, s*2, s*2);
+        g.restore();
+      } else {
+        g.fillStyle='#8a6f1e';
+        g.beginPath(); g.arc(x, y, 0.55*s, 0, TAU); g.fill();
+      }
+  }},
+  { id:'bottle',   disc:'#a05e2c', draw(g,x,y,s){
+      g.fillStyle='#2f5526';
+      g.fillRect(x-0.09*s, y-0.55*s, 0.18*s, 0.3*s);                          // neck
+      g.beginPath();                                                          // body
+      g.moveTo(x-0.09*s, y-0.28*s);
+      g.quadraticCurveTo(x-0.32*s, y-0.18*s, x-0.32*s, y+0.05*s);
+      g.lineTo(x-0.32*s, y+0.5*s); g.lineTo(x+0.32*s, y+0.5*s);
+      g.lineTo(x+0.32*s, y+0.05*s);
+      g.quadraticCurveTo(x+0.32*s, y-0.18*s, x+0.09*s, y-0.28*s);
+      g.closePath(); g.fill();
+      g.fillStyle='#c9a53a';                                                  // cork
+      g.fillRect(x-0.09*s, y-0.62*s, 0.18*s, 0.09*s);
+      g.fillStyle='#e8dcb8';                                                  // label
+      g.fillRect(x-0.24*s, y+0.02*s, 0.48*s, 0.32*s);
+      g.fillStyle='#4a3520';
+      g.font = `700 ${Math.round(0.24*s)}px Georgia, serif`;
+      g.textAlign='center'; g.textBaseline='middle';
+      g.fillText('XXX', x, y+0.19*s);
+  }},
+  { id:'dynamite', disc:'#b03a30', draw(g,x,y,s){
+      const stick='#6e1c15';
+      for (const [dx,dy] of [[-0.26,0.04],[0.26,0.04],[0,-0.04]]){
+        g.fillStyle=stick;
+        const w=0.2*s, h=0.85*s, sx=x+dx*s-w/2, sy=y+dy*s-h/2;
+        g.beginPath();
+        g.roundRect ? g.roundRect(sx, sy, w, h, 0.08*s) : g.rect(sx, sy, w, h);
+        g.fill();
+        g.fillStyle='#4a120d';
+        g.fillRect(sx, sy+h*0.42, w, 0.1*s);
+      }
+      g.strokeStyle='#3b2a18'; g.lineWidth=0.06*s; g.lineCap='round';         // fuse
+      g.beginPath();
+      g.moveTo(x, y-0.46*s);
+      g.quadraticCurveTo(x+0.18*s, y-0.66*s, x+0.34*s, y-0.56*s);
+      g.stroke();
+      g.fillStyle='#ffd44d';                                                  // spark
+      for (let i=0;i<4;i++){
+        const a=i*TAU/4+0.4;
+        g.beginPath();
+        g.moveTo(x+0.34*s, y-0.56*s);
+        g.lineTo(x+0.34*s+Math.cos(a)*0.12*s, y-0.56*s+Math.sin(a)*0.12*s);
+        g.lineWidth=0.05*s; g.strokeStyle='#ffd44d'; g.stroke();
+      }
+  }},
+  { id:'pistol',   disc:'#5d6675', draw(g,x,y,s){
+      const ink='#232830';
+      g.fillStyle=ink;
+      g.fillRect(x-0.55*s, y-0.16*s, 0.85*s, 0.17*s);                         // barrel
+      g.fillRect(x-0.62*s, y-0.2*s, 0.1*s, 0.25*s);                           // muzzle
+      g.beginPath();                                                          // grip
+      g.moveTo(x+0.3*s, y-0.16*s);
+      g.lineTo(x+0.48*s, y-0.16*s);
+      g.lineTo(x+0.34*s, y+0.42*s);
+      g.lineTo(x+0.12*s, y+0.42*s);
+      g.closePath(); g.fill();
+      g.strokeStyle=ink; g.lineWidth=0.07*s;                                  // trigger guard
+      g.beginPath(); g.arc(x+0.06*s, y+0.14*s, 0.12*s, -0.3, Math.PI+0.3); g.stroke();
+      g.fillStyle=ink;                                                        // hammer
+      g.fillRect(x+0.18*s, y-0.34*s, 0.1*s, 0.2*s);
+  }},
+  { id:'rudder',   disc:'#7c5026', draw(g,x,y,s){
+      const ink='#38220e';
+      g.strokeStyle=ink; g.lineWidth=0.11*s; g.lineCap='round';
+      g.beginPath(); g.arc(x, y, 0.42*s, 0, TAU); g.stroke();                 // rim
+      for (let i=0;i<8;i++){                                                  // spokes + handles
+        const a = i*TAU/8;
+        g.beginPath();
+        g.moveTo(x, y);
+        g.lineTo(x+Math.cos(a)*0.6*s, y+Math.sin(a)*0.6*s);
+        g.stroke();
+      }
+      g.fillStyle=ink;
+      g.beginPath(); g.arc(x, y, 0.15*s, 0, TAU); g.fill();                   // hub
+  }},
+  { id:'balls',    disc:'#98a1ab', draw(g,x,y,s){
+      g.fillStyle='#23272e';
+      for (const [dx,dy] of [[0,-0.2],[-0.24,0.18],[0.24,0.18]]){
+        g.beginPath(); g.arc(x+dx*s, y+dy*s, 0.23*s, 0, TAU); g.fill();
+      }
+      g.fillStyle='rgba(255,255,255,0.25)';
+      for (const [dx,dy] of [[0,-0.2],[-0.24,0.18],[0.24,0.18]]){
+        g.beginPath(); g.arc(x+(dx-0.07)*s, y+(dy-0.08)*s, 0.06*s, 0, TAU); g.fill();
+      }
+  }},
+];
+
+function shuffled(arr){
+  const a = arr.slice();
+  for (let i=a.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
 
 /* ---------------- one player's half ---------------- */
 class Board {
@@ -238,6 +431,7 @@ class Board {
     this.idx = idx;           // 0 = bottom player, 1 = top player
     this.game = game;
     this.accent = PLAYER_ACCENT[idx];
+    this.voice = idx === 0 ? 'p1' : 'p2';
     this.reset();
   }
   reset(){
@@ -246,7 +440,7 @@ class Board {
     this.state = 'idle';      // idle | prewave | forming | active | failwait
     this.stateUntil = 0;
     this.buttons = [];
-    this.nextNum = 1;
+    this.nextOrd = 0;
     this.wave = null;
     this.deadline = 0;
     this.frozenUntil = 0;
@@ -257,6 +451,7 @@ class Board {
     this.announce = null;
     this.shakeUntil = 0;
     this.frostTaps = [];
+    this.nextGruntAt = 0;
   }
   setGeom(W, H){
     const old = this.W ? {W:this.W, H:this.H} : null;
@@ -284,13 +479,17 @@ class Board {
   begin(now){
     this.state = 'prewave';
     this.stateUntil = now + 0.8;
+    this.nextGruntAt = now + rand(5, 15);
   }
   startWave(now){
     this.wave = waveFor(this.waveIndex);
     this.buttons = [];
-    this.nextNum = 1;
+    this.nextOrd = 0;
     this.spawned = 0;
     this.positions = this.genPositions(this.wave.n);
+    this.kinds = shuffled(BUTTON_KINDS).slice(0, this.wave.n);
+    while (this.kinds.length < this.wave.n)      // overtime waves can exceed 8
+      this.kinds.push(BUTTON_KINDS[Math.floor(Math.random()*BUTTON_KINDS.length)]);
     this.spawnGap = this.wave.form / (this.wave.n + 1);
     this.spawnNextAt = now + this.spawnGap*0.5;
     this.state = 'forming';
@@ -314,10 +513,10 @@ class Board {
         const p = this.positions[this.spawned];
         this.buttons.push({
           x:p.x, y:p.y, tx:p.x, ty:p.y, r:this.R,
-          num:this.spawned+1, active:false, powder:false, failed:false,
-          born:now, color:DISC_COLORS[this.spawned % DISC_COLORS.length],
+          ord:this.spawned, kind:this.kinds[this.spawned],
+          active:false, powder:false, failed:false, born:now,
         });
-        Snd.pop(this.spawned*0.4);
+        play('pop', 0.85, 0.9 + this.spawned*0.05);
         this.spawned++;
         this.spawnNextAt += this.spawnGap;
       }
@@ -338,6 +537,11 @@ class Board {
       b.x += (b.tx-b.x)*Math.min(1, dt*10);
       b.y += (b.ty-b.y)*Math.min(1, dt*10);
     }
+    if (now >= this.nextGruntAt){ // idle pirate chatter, like PlayerFaceGestures
+      const moods = ['angry','peek','shock','smile'];
+      play(this.voice + '-' + moods[Math.floor(Math.random()*moods.length)], 0.75);
+      this.nextGruntAt = now + rand(5, 15);
+    }
   }
   tickFx(now){ // runs every frame, even after the match ends
     this.inkBlobs = this.inkBlobs.filter(k => now < k.until);
@@ -346,7 +550,8 @@ class Board {
     this.frostTaps = this.frostTaps.filter(f => now - f.t0 < 0.5);
   }
   failWave(now){
-    Snd.fail();
+    play('wrong', 0.9);
+    play(this.voice + '-angry', 0.95);
     this.game.applyDamage(this.idx, AUTO_CLEAR_DMG, this.W/2, this.H*0.4);
     for (const b of this.buttons) b.failed = true;
     this.setAnnounce('TOO SLOW!', '#e0483f', now, 1.0);
@@ -384,28 +589,28 @@ class Board {
     }
     if (hit){
       if (!hit.active || hit.failed) return;         // forming: harmless
-      if (hit.num === this.nextNum){
+      if (hit.ord === this.nextOrd){
         this.popButton(hit, now);
       } else {
-        Snd.wrong();
+        play('wrong', 0.85);
         this.addX(hit.x, hit.y, now);
         this.game.applyDamage(this.idx, WRONG_TAP_DMG, hit.x, hit.y);
       }
     } else if (ly > this.hudH && ly < this.puY - this.puR*1.4 &&
                (this.state === 'active' || this.state === 'forming')){
-      Snd.wrong();
+      play('wrong', 0.7);
       this.addRipple(lx, ly, now);
       this.game.applyDamage(this.idx, EMPTY_TAP_DMG, lx, ly);
     }
   }
   popButton(b, now){
     this.buttons.splice(this.buttons.indexOf(b), 1);
-    this.nextNum++;
-    Snd.pop(b.num);
-    this.burst(b.x, b.y, b.color, now);
+    this.nextOrd++;
+    play('pop', 1, 0.95 + b.ord*0.05);
+    this.burst(b.x, b.y, b.kind.disc, now);
     this.game.applyDamage(1 - this.idx, this.wave.dmg, null, null, this.idx);
     if (b.powder){
-      Snd.explode();
+      play('boom', 0.9);
       this.burst(b.x, b.y, '#ff9c3f', now, 26);
       this.shakeUntil = now + 0.35;
       this.game.applyDamage(this.idx, POWDER_SELF_DMG, b.x, b.y);
@@ -413,8 +618,18 @@ class Board {
     if (this.buttons.length === 0 && this.state === 'active') this.clearWave(now);
   }
   /* --- effects applied by the enemy --- */
-  applyIce(now){ this.frozenUntil = now + FREEZE_SECS; this.setAnnounce('❄ FROZEN ❄', '#a8dcff', now, FREEZE_SECS); Snd.freeze(); }
-  applyGhost(now){ this.ghostUntil = now + GHOST_SECS; this.setAnnounce('👻 CURSED', '#cfd8ff', now, 1.0); Snd.ghost(); }
+  applyIce(now){
+    this.frozenUntil = now + FREEZE_SECS;
+    this.setAnnounce('❄ FROZEN ❄', '#a8dcff', now, FREEZE_SECS);
+    Snd.freeze();
+    play(this.voice + '-shock', 0.95);
+  }
+  applyGhost(now){
+    this.ghostUntil = now + GHOST_SECS;
+    this.setAnnounce('👻 CURSED', '#cfd8ff', now, 1.0);
+    Snd.ghost();
+    play(this.voice + '-peek', 0.9);
+  }
   applyInk(now){
     const a = this.playArea();
     for (let i=0;i<3;i++){
@@ -422,6 +637,7 @@ class Board {
         r:this.R*rand(1.9,2.6), until:now+INK_SECS, t0:now, ph:rand(0,TAU) });
     }
     Snd.ink();
+    play(this.voice + '-shock', 0.9);
   }
   applyJuggle(now){
     const live = this.buttons.filter(b=>!b.failed);
@@ -436,6 +652,7 @@ class Board {
     }
     this.setAnnounce('🐵 JUGGLED!', '#e0a23c', now, 1.0);
     Snd.juggle();
+    play(this.voice + '-angry', 0.85);
   }
   applyPowder(now){
     const targets = this.buttons.filter(b=>!b.powder && !b.failed);
@@ -445,10 +662,10 @@ class Board {
       targets.splice(k,1);
     }
     this.setAnnounce('🛢 GUNPOWDER!', '#ff9c3f', now, 1.0);
-    Snd.powder();
+    play('cast', 0.9);
   }
   cannonImpact(x, y, now){
-    Snd.boom();
+    play('boom', 1);
     this.burst(x, y, '#ff8a3f', now, 30);
     this.smoke(x, y, now);
     this.shakeUntil = now + 0.4;
@@ -474,31 +691,32 @@ class Board {
   addFloat(txt, color, x, y, now){ this.floats.push({txt, color, x, y, t0:now}); }
 }
 
-/* procedural weathered deck planks, pre-rendered per resize */
+/* Deck background: the original PlanksDiffuse texture, tinted with the
+   player's lantern glow. Falls back to procedural planks if the image
+   is unavailable. */
 function makePlanks(W, H, accent){
   const c = document.createElement('canvas');
   c.width = Math.max(1, W); c.height = Math.max(1, H);
   const g = c.getContext('2d');
-  g.fillStyle = '#4a3018'; g.fillRect(0,0,W,H);
-  const ph = clamp(H/7, 34, 64);
-  const tones = ['#4d3419','#553a1d','#452c14','#513620','#48311a'];
-  let row = 0;
-  for (let y=0; y<H; y+=ph, row++){
-    g.fillStyle = tones[row % tones.length];
-    g.fillRect(0, y, W, ph);
-    g.fillStyle = 'rgba(0,0,0,0.35)';
-    g.fillRect(0, y, W, 2);
-    const off = (row % 2) ? W*0.33 : W*0.66;   // staggered seams
-    g.fillRect(off, y, 2, ph);
-    g.fillStyle = 'rgba(20,12,5,0.8)';          // nails
-    g.beginPath(); g.arc(off+10, y+ph*0.5, 2, 0, TAU); g.fill();
-    g.strokeStyle = 'rgba(0,0,0,0.12)';         // grain streaks
-    g.lineWidth = 1;
-    for (let i=0;i<3;i++){
-      const gy = y + rand(4, ph-4);
-      g.beginPath(); g.moveTo(rand(0,W*0.4), gy);
-      g.quadraticCurveTo(W*0.5, gy+rand(-4,4), W-rand(0,W*0.3), gy);
-      g.stroke();
+  if (IMG.planks){
+    const img = IMG.planks;
+    const scale = Math.max(W/img.width, H/img.height, 0.45);
+    const w = img.width*scale, h = img.height*scale;
+    for (let y=0; y<H; y+=h)
+      for (let x=0; x<W; x+=w)
+        g.drawImage(img, x, y, w, h);
+    g.fillStyle = 'rgba(20,10,2,0.42)';  // dusk it down to night
+    g.fillRect(0,0,W,H);
+  } else {
+    g.fillStyle = '#4a3018'; g.fillRect(0,0,W,H);
+    const ph = clamp(H/7, 34, 64);
+    const tones = ['#4d3419','#553a1d','#452c14','#513620','#48311a'];
+    let row = 0;
+    for (let y=0; y<H; y+=ph, row++){
+      g.fillStyle = tones[row % tones.length];
+      g.fillRect(0, y, W, ph);
+      g.fillStyle = 'rgba(0,0,0,0.35)';
+      g.fillRect(0, y, W, 2);
     }
   }
   // lantern glow at the player's own edge (local y = H)
@@ -569,6 +787,7 @@ class Game {
     const enemy = this.boards[1 - playerIdx];
     const me = this.boards[playerIdx];
     const def = POWERUPS[slot];
+    play('click', 0.8);
     me.addFloat(def.icon + ' ' + def.name + '!', '#e8c469', me.W/2, me.hudH + 30, now);
     switch (def.id){
       case 'ice':    enemy.applyIce(now); break;
@@ -601,6 +820,8 @@ class Game {
     this.running = false;
     this.winner = winnerIdx;
     Snd.fanfare();
+    play((winnerIdx === 0 ? 'p1' : 'p2') + '-smile', 1);
+    play((winnerIdx === 0 ? 'p2' : 'p1') + '-angry', 0.9);
     const taunts = [
       'The loser walks the plank. Slowly. For dramatic effect.',
       'Faster fingers, fuller treasure chest.',
@@ -775,7 +996,7 @@ class Game {
   renderButton(g, b, bt, now){
     const grow = clamp((now - bt.born)/0.16, 0, 1);
     const r = bt.r * (0.5 + grow*0.5);
-    let alpha = bt.active ? 1 : 0.38;
+    let alpha = bt.active ? 1 : 0.45;
     if (bt.failed) alpha = 0.25 + Math.sin(now*20)*0.05;
     g.globalAlpha = alpha;
     g.fillStyle = 'rgba(0,0,0,0.35)';                        // drop shadow
@@ -784,36 +1005,40 @@ class Game {
     ring.addColorStop(0,'#f6dd8f'); ring.addColorStop(0.5,'#b98f3a'); ring.addColorStop(1,'#8a6420');
     g.fillStyle = ring;
     g.beginPath(); g.arc(bt.x, bt.y, r, 0, TAU); g.fill();
-    g.fillStyle = bt.failed ? '#555' : bt.color;             // colored disc
-    g.beginPath(); g.arc(bt.x, bt.y, r*0.78, 0, TAU); g.fill();
-    g.fillStyle = 'rgba(255,255,255,0.22)';                  // gloss
-    g.beginPath(); g.ellipse(bt.x, bt.y-r*0.34, r*0.55, r*0.28, 0, 0, TAU); g.fill();
+    const ghosted = now < b.ghostUntil && !bt.failed;
+    const inner = r*0.8;
+    if (ghosted){
+      // Ghost Curse: identity wiped — same grey face on every button
+      g.fillStyle = '#6d7379';
+      g.beginPath(); g.arc(bt.x, bt.y, inner, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = r*0.09; g.lineCap='round';
+      g.beginPath(); g.arc(bt.x, bt.y-2, inner*0.45, Math.PI*0.15, Math.PI*1.2); g.stroke();
+      g.beginPath(); g.arc(bt.x+inner*0.2, bt.y+inner*0.25, inner*0.2, 0, TAU); g.stroke();
+    } else {
+      g.fillStyle = bt.failed ? '#555' : bt.kind.disc;
+      g.beginPath(); g.arc(bt.x, bt.y, inner, 0, TAU); g.fill();
+      if (!bt.failed) bt.kind.draw(g, bt.x, bt.y, inner);
+      g.fillStyle = 'rgba(255,255,255,0.14)';                // gloss
+      g.beginPath(); g.ellipse(bt.x, bt.y-r*0.38, r*0.55, r*0.24, 0, 0, TAU); g.fill();
+    }
     if (bt.powder){                                          // gunpowder coating
       g.fillStyle = 'rgba(25,18,10,0.85)';
       for (let i=0;i<7;i++){
-        const aa = i*2.39996 + bt.num;                       // stable speckle layout
+        const aa = i*2.39996 + bt.ord;                       // stable speckle layout
         const rr = r*0.6*((i%3)+1)/3;
         g.beginPath();
         g.arc(bt.x+Math.cos(aa)*rr, bt.y+Math.sin(aa)*rr, r*0.09, 0, TAU);
         g.fill();
       }
-      const em = 0.6 + Math.sin(now*12 + bt.num)*0.4;        // ember fuse
+      const em = 0.6 + Math.sin(now*12 + bt.ord)*0.4;        // ember fuse
       g.fillStyle = `rgba(255,150,50,${em})`;
       g.beginPath(); g.arc(bt.x + r*0.62, bt.y - r*0.62, r*0.14, 0, TAU); g.fill();
     }
-    const ghosted = now < b.ghostUntil;
-    g.font = `800 ${Math.round(r*0.95)}px -apple-system, "Segoe UI", Arial, sans-serif`;
-    g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.strokeStyle = 'rgba(0,0,0,0.65)'; g.lineWidth = Math.max(3, r*0.14);
-    const label = ghosted ? '?' : String(bt.num);
-    g.strokeText(label, bt.x, bt.y+1);
-    g.fillStyle = ghosted ? '#dfe6ff' : '#fff';
-    g.fillText(label, bt.x, bt.y+1);
     g.globalAlpha = 1;
   }
   renderParticle(g, p, now){
     const t = (now - p.t0)/p.life;
-    if (t >= 1) return; // update() stops filtering once the match ends
+    if (t >= 1) return;
     if (p.type === 'spark'){
       g.globalAlpha = 1-t;
       g.fillStyle = p.color;
@@ -923,10 +1148,36 @@ legend.innerHTML = POWERUPS.map(p =>
   `<div class="pu"><div class="ico">${p.icon}</div><div><div class="nm">${p.name}</div><div class="ds">${p.desc}</div></div></div>`
 ).join('');
 
+function drawFacesPreview(){
+  const cv = document.getElementById('facesPreview');
+  const n = BUTTON_KINDS.length, cell = 52, pad = 6;
+  cv.width = n*cell; cv.height = cell + pad;
+  const g = cv.getContext('2d');
+  BUTTON_KINDS.forEach((k, i)=>{
+    const x = i*cell + cell/2, y = (cell+pad)/2, r = cell*0.44;
+    const ring = g.createLinearGradient(x-r, y-r, x+r, y+r);
+    ring.addColorStop(0,'#f6dd8f'); ring.addColorStop(0.5,'#b98f3a'); ring.addColorStop(1,'#8a6420');
+    g.fillStyle = ring;
+    g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+    g.fillStyle = k.disc;
+    g.beginPath(); g.arc(x, y, r*0.8, 0, TAU); g.fill();
+    k.draw(g, x, y, r*0.8);
+  });
+}
+
 const game = new Game(document.getElementById('game'));
 window.game = game; // exposed for debugging / automated tests
+
+loadImages(()=>{
+  game.resize();        // re-bake plank backgrounds with the real texture
+  drawFacesPreview();
+});
+drawFacesPreview();     // draw immediately too (coin falls back until loaded)
+
 document.getElementById('startBtn').addEventListener('click', ()=>{
   Snd.ensure();
+  preloadSfx();
+  Music.start();
   document.getElementById('startOverlay').hidden = true;
   game.start();
 });
