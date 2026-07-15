@@ -287,134 +287,167 @@ const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').mat
 
 /* ---------------- the eight button faces ----------------
    Same set as the Unity prefabs (Poppable_Buttons): skull, anchor,
-   coin, bottle, dynamite, pistol, rudder, cannonballs. The coin is
-   the real texture from Buttons2Diffuse; the rest are flat painted
-   marks in the same tone-on-tone style. No numbers anywhere —
-   the faces ARE the memory hooks. */
+   coin, bottle, dynamite, pistol, rudder, cannonballs. Every button
+   is a disc of the same deck wood (PlanksDiffuse) with its mark
+   painted as large as the face allows — the mark IS the memory hook,
+   so it owns the button. `disc` is the mark's signature color, used
+   for pop particles. Coordinates are in units of the disc radius;
+   marks reach ±0.78. */
 const BUTTON_KINDS = [
-  { id:'skull',    disc:'#39445a', draw(g,x,y,s){
-      const ink='#d8dee8';
-      g.fillStyle=ink;
-      g.beginPath(); g.arc(x, y-0.08*s, 0.5*s, 0, TAU); g.fill();            // cranium
-      g.fillRect(x-0.3*s, y+0.1*s, 0.6*s, 0.42*s);                           // jaw
-      g.fillStyle=this.disc;
-      g.beginPath(); g.arc(x-0.2*s, y-0.14*s, 0.13*s, 0, TAU); g.fill();     // eyes
-      g.beginPath(); g.arc(x+0.2*s, y-0.14*s, 0.13*s, 0, TAU); g.fill();
+  { id:'skull',    disc:'#f0ead8', draw(g,x,y,s){
+      const bone='#f0ead8', hole='#33241a';
+      g.fillStyle=bone;
+      g.beginPath(); g.arc(x, y-0.14*s, 0.58*s, 0, TAU); g.fill();           // cranium
+      g.fillRect(x-0.36*s, y+0.1*s, 0.72*s, 0.5*s);                          // jaw
+      g.fillStyle=hole;
+      g.beginPath(); g.arc(x-0.24*s, y-0.2*s, 0.16*s, 0, TAU); g.fill();     // eyes
+      g.beginPath(); g.arc(x+0.24*s, y-0.2*s, 0.16*s, 0, TAU); g.fill();
       g.beginPath();                                                          // nose
-      g.moveTo(x, y+0.02*s); g.lineTo(x-0.07*s, y+0.16*s); g.lineTo(x+0.07*s, y+0.16*s);
+      g.moveTo(x, y+0.02*s); g.lineTo(x-0.09*s, y+0.2*s); g.lineTo(x+0.09*s, y+0.2*s);
       g.closePath(); g.fill();
-      g.strokeStyle=this.disc; g.lineWidth=0.05*s;                            // teeth
-      for (const dx of [-0.15,0,0.15]){
-        g.beginPath(); g.moveTo(x+dx*s, y+0.3*s); g.lineTo(x+dx*s, y+0.5*s); g.stroke();
+      g.strokeStyle=hole; g.lineWidth=0.06*s;                                 // teeth
+      for (const dx of [-0.18,0,0.18]){
+        g.beginPath(); g.moveTo(x+dx*s, y+0.34*s); g.lineTo(x+dx*s, y+0.6*s); g.stroke();
       }
   }},
-  { id:'anchor',   disc:'#2e8577', draw(g,x,y,s){
-      const ink='#0f3d36';
-      g.strokeStyle=ink; g.lineWidth=0.13*s; g.lineCap='round';
-      g.beginPath(); g.arc(x, y-0.52*s, 0.14*s, 0, TAU); g.stroke();          // ring
-      g.beginPath(); g.moveTo(x, y-0.38*s); g.lineTo(x, y+0.42*s); g.stroke();// shaft
-      g.beginPath(); g.moveTo(x-0.3*s, y-0.18*s); g.lineTo(x+0.3*s, y-0.18*s); g.stroke(); // crossbar
-      g.beginPath(); g.arc(x, y+0.02*s, 0.46*s, Math.PI*0.15, Math.PI*0.85); g.stroke();   // arms
+  { id:'anchor',   disc:'#0e4a40', draw(g,x,y,s){
+      const ink='#0e4a40';
+      g.strokeStyle=ink; g.lineWidth=0.17*s; g.lineCap='round';
+      g.beginPath(); g.arc(x, y-0.58*s, 0.17*s, 0, TAU); g.stroke();          // ring
+      g.beginPath(); g.moveTo(x, y-0.4*s); g.lineTo(x, y+0.55*s); g.stroke(); // shaft
+      g.beginPath(); g.moveTo(x-0.36*s, y-0.2*s); g.lineTo(x+0.36*s, y-0.2*s); g.stroke(); // crossbar
+      g.beginPath(); g.arc(x, y+0.05*s, 0.58*s, Math.PI*0.12, Math.PI*0.88); g.stroke();   // arms
       g.fillStyle=ink;                                                        // flukes
-      g.beginPath(); g.moveTo(x-0.44*s, y+0.2*s); g.lineTo(x-0.6*s, y+0.06*s); g.lineTo(x-0.32*s, y+0.02*s); g.closePath(); g.fill();
-      g.beginPath(); g.moveTo(x+0.44*s, y+0.2*s); g.lineTo(x+0.6*s, y+0.06*s); g.lineTo(x+0.32*s, y+0.02*s); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(x-0.55*s, y+0.32*s); g.lineTo(x-0.78*s, y+0.12*s); g.lineTo(x-0.4*s, y+0.05*s); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(x+0.55*s, y+0.32*s); g.lineTo(x+0.78*s, y+0.12*s); g.lineTo(x+0.4*s, y+0.05*s); g.closePath(); g.fill();
   }},
-  { id:'coin',     disc:'#c9a53a', draw(g,x,y,s){
-      if (IMG.coin){
-        g.save();
-        g.beginPath(); g.arc(x, y, s, 0, TAU); g.clip();
-        g.drawImage(IMG.coin, x-s, y-s, s*2, s*2);
-        g.restore();
-      } else {
-        g.fillStyle='#8a6f1e';
-        g.beginPath(); g.arc(x, y, 0.55*s, 0, TAU); g.fill();
+  { id:'coin',     disc:'#d4a017', draw(g,x,y,s){
+      const gold='#d4a017', shade='#95700e';
+      g.fillStyle=gold;
+      g.beginPath(); g.arc(x, y, 0.74*s, 0, TAU); g.fill();
+      g.strokeStyle=shade; g.lineWidth=0.09*s;
+      g.beginPath(); g.arc(x, y, 0.63*s, 0, TAU); g.stroke();
+      for (let i=0;i<12;i++){                                                 // milled edge
+        const a=i*TAU/12;
+        g.beginPath();
+        g.moveTo(x+Math.cos(a)*0.66*s, y+Math.sin(a)*0.66*s);
+        g.lineTo(x+Math.cos(a)*0.74*s, y+Math.sin(a)*0.74*s);
+        g.stroke();
       }
+      g.fillStyle=shade;                                                      // skull imprint
+      g.beginPath(); g.arc(x, y-0.08*s, 0.3*s, 0, TAU); g.fill();
+      g.fillRect(x-0.18*s, y+0.04*s, 0.36*s, 0.26*s);
+      g.fillStyle=gold;
+      g.beginPath(); g.arc(x-0.12*s, y-0.12*s, 0.08*s, 0, TAU); g.fill();
+      g.beginPath(); g.arc(x+0.12*s, y-0.12*s, 0.08*s, 0, TAU); g.fill();
   }},
-  { id:'bottle',   disc:'#a05e2c', draw(g,x,y,s){
-      g.fillStyle='#2f5526';
-      g.fillRect(x-0.09*s, y-0.55*s, 0.18*s, 0.3*s);                          // neck
+  { id:'bottle',   disc:'#2f6326', draw(g,x,y,s){
+      g.fillStyle='#2f6326';
+      g.fillRect(x-0.12*s, y-0.72*s, 0.24*s, 0.36*s);                         // neck
       g.beginPath();                                                          // body
-      g.moveTo(x-0.09*s, y-0.28*s);
-      g.quadraticCurveTo(x-0.32*s, y-0.18*s, x-0.32*s, y+0.05*s);
-      g.lineTo(x-0.32*s, y+0.5*s); g.lineTo(x+0.32*s, y+0.5*s);
-      g.lineTo(x+0.32*s, y+0.05*s);
-      g.quadraticCurveTo(x+0.32*s, y-0.18*s, x+0.09*s, y-0.28*s);
+      g.moveTo(x-0.12*s, y-0.38*s);
+      g.quadraticCurveTo(x-0.43*s, y-0.25*s, x-0.43*s, y+0.06*s);
+      g.lineTo(x-0.43*s, y+0.68*s); g.lineTo(x+0.43*s, y+0.68*s);
+      g.lineTo(x+0.43*s, y+0.06*s);
+      g.quadraticCurveTo(x+0.43*s, y-0.25*s, x+0.12*s, y-0.38*s);
       g.closePath(); g.fill();
       g.fillStyle='#c9a53a';                                                  // cork
-      g.fillRect(x-0.09*s, y-0.62*s, 0.18*s, 0.09*s);
+      g.fillRect(x-0.12*s, y-0.8*s, 0.24*s, 0.1*s);
       g.fillStyle='#e8dcb8';                                                  // label
-      g.fillRect(x-0.24*s, y+0.02*s, 0.48*s, 0.32*s);
+      g.fillRect(x-0.32*s, y+0.06*s, 0.64*s, 0.42*s);
       g.fillStyle='#4a3520';
-      g.font = `700 ${Math.round(0.24*s)}px Georgia, serif`;
+      g.font = `700 ${Math.round(0.3*s)}px Georgia, serif`;
       g.textAlign='center'; g.textBaseline='middle';
-      g.fillText('XXX', x, y+0.19*s);
+      g.fillText('XXX', x, y+0.28*s);
   }},
-  { id:'dynamite', disc:'#b03a30', draw(g,x,y,s){
-      const stick='#6e1c15';
-      for (const [dx,dy] of [[-0.26,0.04],[0.26,0.04],[0,-0.04]]){
+  { id:'dynamite', disc:'#a12318', draw(g,x,y,s){
+      const stick='#a12318';
+      for (const [dx,dy] of [[-0.34,0.1],[0.34,0.1],[0,0.02]]){
         g.fillStyle=stick;
-        const w=0.2*s, h=0.85*s, sx=x+dx*s-w/2, sy=y+dy*s-h/2;
+        const w=0.27*s, h=1.1*s, sx=x+dx*s-w/2, sy=y+dy*s-h/2;
         g.beginPath();
-        g.roundRect ? g.roundRect(sx, sy, w, h, 0.08*s) : g.rect(sx, sy, w, h);
+        g.roundRect ? g.roundRect(sx, sy, w, h, 0.1*s) : g.rect(sx, sy, w, h);
         g.fill();
-        g.fillStyle='#4a120d';
-        g.fillRect(sx, sy+h*0.42, w, 0.1*s);
+        g.fillStyle='#5c1410';
+        g.fillRect(sx, sy+h*0.44, w, 0.12*s);
       }
-      g.strokeStyle='#3b2a18'; g.lineWidth=0.06*s; g.lineCap='round';         // fuse
+      g.strokeStyle='#3b2a18'; g.lineWidth=0.08*s; g.lineCap='round';         // fuse
       g.beginPath();
-      g.moveTo(x, y-0.46*s);
-      g.quadraticCurveTo(x+0.18*s, y-0.66*s, x+0.34*s, y-0.56*s);
+      g.moveTo(x, y-0.53*s);
+      g.quadraticCurveTo(x+0.24*s, y-0.8*s, x+0.45*s, y-0.66*s);
       g.stroke();
-      g.fillStyle='#ffd44d';                                                  // spark
+      g.strokeStyle='#ffd44d'; g.lineWidth=0.07*s;                            // spark
       for (let i=0;i<4;i++){
         const a=i*TAU/4+0.4;
         g.beginPath();
-        g.moveTo(x+0.34*s, y-0.56*s);
-        g.lineTo(x+0.34*s+Math.cos(a)*0.12*s, y-0.56*s+Math.sin(a)*0.12*s);
-        g.lineWidth=0.05*s; g.strokeStyle='#ffd44d'; g.stroke();
+        g.moveTo(x+0.45*s, y-0.66*s);
+        g.lineTo(x+0.45*s+Math.cos(a)*0.15*s, y-0.66*s+Math.sin(a)*0.15*s);
+        g.stroke();
       }
   }},
-  { id:'pistol',   disc:'#5d6675', draw(g,x,y,s){
-      const ink='#232830';
-      g.fillStyle=ink;
-      g.fillRect(x-0.55*s, y-0.16*s, 0.85*s, 0.17*s);                         // barrel
-      g.fillRect(x-0.62*s, y-0.2*s, 0.1*s, 0.25*s);                           // muzzle
-      g.beginPath();                                                          // grip
-      g.moveTo(x+0.3*s, y-0.16*s);
-      g.lineTo(x+0.48*s, y-0.16*s);
-      g.lineTo(x+0.34*s, y+0.42*s);
-      g.lineTo(x+0.12*s, y+0.42*s);
+  { id:'pistol',   disc:'#26292e', draw(g,x,y,s){
+      const metal='#26292e', grip='#4a2f16';
+      g.fillStyle=metal;
+      g.fillRect(x-0.72*s, y-0.24*s, 1.12*s, 0.24*s);                         // barrel
+      g.fillRect(x-0.78*s, y-0.3*s, 0.13*s, 0.34*s);                          // muzzle
+      g.fillStyle=grip;                                                       // grip
+      g.beginPath();
+      g.moveTo(x+0.36*s, y-0.24*s);
+      g.lineTo(x+0.62*s, y-0.24*s);
+      g.lineTo(x+0.42*s, y+0.55*s);
+      g.lineTo(x+0.13*s, y+0.55*s);
       g.closePath(); g.fill();
-      g.strokeStyle=ink; g.lineWidth=0.07*s;                                  // trigger guard
-      g.beginPath(); g.arc(x+0.06*s, y+0.14*s, 0.12*s, -0.3, Math.PI+0.3); g.stroke();
-      g.fillStyle=ink;                                                        // hammer
-      g.fillRect(x+0.18*s, y-0.34*s, 0.1*s, 0.2*s);
+      g.strokeStyle=metal; g.lineWidth=0.09*s;                                // trigger guard
+      g.beginPath(); g.arc(x+0.05*s, y+0.2*s, 0.17*s, -0.3, Math.PI+0.3); g.stroke();
+      g.fillStyle=metal;                                                      // hammer
+      g.fillRect(x+0.22*s, y-0.5*s, 0.13*s, 0.28*s);
   }},
-  { id:'rudder',   disc:'#7c5026', draw(g,x,y,s){
-      const ink='#38220e';
-      g.strokeStyle=ink; g.lineWidth=0.11*s; g.lineCap='round';
-      g.beginPath(); g.arc(x, y, 0.42*s, 0, TAU); g.stroke();                 // rim
+  { id:'rudder',   disc:'#3a2410', draw(g,x,y,s){
+      const ink='#3a2410';
+      g.strokeStyle=ink; g.lineWidth=0.14*s; g.lineCap='round';
+      g.beginPath(); g.arc(x, y, 0.55*s, 0, TAU); g.stroke();                 // rim
       for (let i=0;i<8;i++){                                                  // spokes + handles
         const a = i*TAU/8;
         g.beginPath();
         g.moveTo(x, y);
-        g.lineTo(x+Math.cos(a)*0.6*s, y+Math.sin(a)*0.6*s);
+        g.lineTo(x+Math.cos(a)*0.78*s, y+Math.sin(a)*0.78*s);
         g.stroke();
       }
       g.fillStyle=ink;
-      g.beginPath(); g.arc(x, y, 0.15*s, 0, TAU); g.fill();                   // hub
+      g.beginPath(); g.arc(x, y, 0.2*s, 0, TAU); g.fill();                    // hub
   }},
-  { id:'balls',    disc:'#98a1ab', draw(g,x,y,s){
+  { id:'balls',    disc:'#23272e', draw(g,x,y,s){
       g.fillStyle='#23272e';
-      for (const [dx,dy] of [[0,-0.2],[-0.24,0.18],[0.24,0.18]]){
-        g.beginPath(); g.arc(x+dx*s, y+dy*s, 0.23*s, 0, TAU); g.fill();
+      for (const [dx,dy] of [[0,-0.32],[-0.36,0.28],[0.36,0.28]]){
+        g.beginPath(); g.arc(x+dx*s, y+dy*s, 0.32*s, 0, TAU); g.fill();
       }
-      g.fillStyle='rgba(255,255,255,0.25)';
-      for (const [dx,dy] of [[0,-0.2],[-0.24,0.18],[0.24,0.18]]){
-        g.beginPath(); g.arc(x+(dx-0.07)*s, y+(dy-0.08)*s, 0.06*s, 0, TAU); g.fill();
+      g.fillStyle='rgba(255,255,255,0.28)';
+      for (const [dx,dy] of [[0,-0.32],[-0.36,0.28],[0.36,0.28]]){
+        g.beginPath(); g.arc(x+(dx-0.1)*s, y+(dy-0.11)*s, 0.08*s, 0, TAU); g.fill();
       }
   }},
 ];
+
+/* Every button is sawn from the same tree: a disc of the deck-plank
+   texture with a carved rim. `seed` offsets the grain per button. */
+function drawButtonBase(g, x, y, r, seed=0){
+  if (IMG.planks){
+    g.save();
+    g.beginPath(); g.arc(x, y, r, 0, TAU); g.clip();
+    const sw = 220, sx = 60 + (seed*137)%700, sy = 60 + (seed*211)%700;
+    g.drawImage(IMG.planks, sx, sy, sw, sw, x-r, y-r, r*2, r*2);
+    g.fillStyle = 'rgba(255,214,140,0.28)';   // freshly sanded, lighter than the deck
+    g.fillRect(x-r, y-r, r*2, r*2);
+    g.restore();
+  } else {
+    g.fillStyle = '#a3702f';
+    g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+  }
+  g.strokeStyle = 'rgba(46,26,9,0.85)'; g.lineWidth = r*0.1;   // carved rim
+  g.beginPath(); g.arc(x, y, r*0.93, 0, TAU); g.stroke();
+  g.strokeStyle = 'rgba(255,235,190,0.3)'; g.lineWidth = r*0.05;
+  g.beginPath(); g.arc(x, y, r*0.84, 0, TAU); g.stroke();
+}
 
 function shuffled(arr){
   const a = arr.slice();
@@ -425,13 +458,138 @@ function shuffled(arr){
   return a;
 }
 
+/* ---------------- pirate avatars ----------------
+   Data-driven characters: each avatar bundles its look and its voice
+   set, so new purchasable avatars later are just new entries here
+   (and per-avatar power-up loadouts can hook in the same way).
+   Drawn as animated canvas portraits that react to the board. */
+const AVATARS = [
+  { id:'redbeard', voice:'p1', skin:'#e2a878', beard:'#8a3f1a', brow:'#5c2d14',
+    hat:'bandana', hatColor:'#b93d32', hatDot:'#f0e3c0', eyepatch:false, earring:true },
+  { id:'blackhat', voice:'p2', skin:'#c98e5f', beard:'#332a21', brow:'#1c1610',
+    hat:'tricorn', hatColor:'#26262e', hatTrim:'#e8c469', eyepatch:true, earring:false },
+];
+
+function drawPirate(g, b, cx, cy, r, now){
+  const av = AVATARS[b.idx];
+  const mood = b.moodNow(now);
+  cy += Math.sin(now*2 + b.idx*2.6)*r*0.05;                    // idle bob
+  if (mood === 'shock' && !REDUCED_MOTION) cx += Math.sin(now*32)*r*0.03;
+  if (mood === 'angry' && !REDUCED_MOTION) cy += Math.sin(now*18)*r*0.02;
+  // head
+  g.fillStyle = av.skin;
+  g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
+  // beard over the lower face, cheeks left bare
+  g.fillStyle = av.beard;
+  g.beginPath(); g.arc(cx, cy + r*0.12, r*0.94, 0.15, Math.PI - 0.15); g.fill();
+  // mouth
+  const my = cy + r*0.42;
+  if (mood === 'smile'){
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(cx, my - r*0.08, r*0.3, 0, Math.PI); g.fill();
+  } else if (mood === 'angry'){
+    g.fillStyle = '#fff';
+    g.fillRect(cx - r*0.26, my - r*0.12, r*0.52, r*0.18);
+    g.strokeStyle = av.beard; g.lineWidth = r*0.05;
+    for (const dx of [-0.13, 0, 0.13]){
+      g.beginPath(); g.moveTo(cx + dx*r, my - r*0.12); g.lineTo(cx + dx*r, my + r*0.06); g.stroke();
+    }
+  } else if (mood === 'shock'){
+    g.fillStyle = '#26160e';
+    g.beginPath(); g.ellipse(cx, my - r*0.02, r*0.16, r*0.22, 0, 0, TAU); g.fill();
+  } else if (mood === 'peek'){
+    g.strokeStyle = '#26160e'; g.lineWidth = r*0.07; g.lineCap='round';
+    g.beginPath(); g.moveTo(cx - r*0.05, my); g.lineTo(cx + r*0.25, my - r*0.08); g.stroke();
+  } else {
+    g.strokeStyle = '#26160e'; g.lineWidth = r*0.07; g.lineCap='round';
+    g.beginPath();
+    g.moveTo(cx - r*0.18, my - r*0.02);
+    g.quadraticCurveTo(cx, my + r*0.08, cx + r*0.18, my - r*0.02);
+    g.stroke();
+  }
+  // eyes
+  const blink = now < b.blinkUntil;
+  const ey = cy - r*0.14, ex = r*0.34, er = r*0.15;
+  for (const side of [-1, 1]){
+    const x = cx + side*ex;
+    if (av.eyepatch && side === -1){
+      g.strokeStyle = '#1a1512'; g.lineWidth = r*0.09;
+      g.beginPath(); g.moveTo(cx - r*0.97, ey - r*0.24); g.lineTo(cx + r*0.25, ey - r*0.42); g.stroke();
+      g.fillStyle = '#1a1512';
+      g.beginPath(); g.arc(x, ey, er*1.3, 0, TAU); g.fill();
+      continue;
+    }
+    if ((blink && mood !== 'shock') || (mood === 'peek' && side === -1)){
+      g.strokeStyle = '#5c3a20'; g.lineWidth = r*0.06; g.lineCap='round';
+      g.beginPath(); g.moveTo(x - er, ey); g.lineTo(x + er, ey); g.stroke();
+      continue;
+    }
+    g.fillStyle = '#fff';
+    const wr = mood === 'shock' ? er*1.35 : er;
+    g.beginPath(); g.arc(x, ey, wr, 0, TAU); g.fill();
+    g.fillStyle = '#26160e';
+    const pr = mood === 'shock' ? er*0.4 : er*0.55;
+    g.beginPath(); g.arc(x, ey + (mood === 'shock' ? 0 : er*0.15), pr, 0, TAU); g.fill();
+    if (mood === 'angry'){ // half-lidded glare
+      g.fillStyle = av.skin;
+      g.fillRect(x - wr, ey - wr, wr*2, wr*0.75);
+    }
+  }
+  // brows
+  g.strokeStyle = av.brow; g.lineWidth = r*0.09; g.lineCap = 'round';
+  const by = ey - er*1.35;
+  const tilt = mood === 'angry' ? r*0.13 : (mood === 'shock' || mood === 'smile') ? -r*0.05 : 0;
+  for (const side of [-1, 1]){
+    if (av.eyepatch && side === -1) continue;
+    const x = cx + side*ex;
+    g.beginPath();
+    g.moveTo(x - er, by + (side === 1 ? tilt : -tilt));
+    g.lineTo(x + er, by + (side === 1 ? -tilt : tilt));
+    g.stroke();
+  }
+  // hat
+  if (av.hat === 'bandana'){
+    g.fillStyle = av.hatColor;
+    g.beginPath(); g.arc(cx, cy - r*0.38, r*0.97, Math.PI, 0); g.fill();
+    g.fillRect(cx - r*0.97, cy - r*0.54, r*1.94, r*0.17);
+    g.beginPath(); g.arc(cx + r*0.9, cy - r*0.42, r*0.17, 0, TAU); g.fill();  // knot
+    g.beginPath();                                                            // tails
+    g.moveTo(cx + r*0.93, cy - r*0.38);
+    g.lineTo(cx + r*1.25, cy - r*0.1); g.lineTo(cx + r*0.93, cy - r*0.14);
+    g.closePath(); g.fill();
+    g.fillStyle = av.hatDot;
+    for (const [dx,dy] of [[-0.5,-0.82],[0,-1.05],[0.5,-0.82],[-0.22,-0.68],[0.26,-0.66]]){
+      g.beginPath(); g.arc(cx + dx*r, cy + dy*r, r*0.06, 0, TAU); g.fill();
+    }
+  } else { // tricorn
+    g.fillStyle = av.hatColor;
+    g.beginPath(); g.ellipse(cx, cy - r*0.58, r*1.12, r*0.2, 0, 0, TAU); g.fill();
+    g.beginPath(); g.arc(cx, cy - r*0.6, r*0.7, Math.PI, 0); g.fill();
+    g.strokeStyle = av.hatTrim; g.lineWidth = r*0.05;
+    g.beginPath(); g.ellipse(cx, cy - r*0.58, r*1.12, r*0.2, 0, Math.PI*0.06, Math.PI*0.94); g.stroke();
+    g.fillStyle = '#f0ead8';                                                  // emblem
+    g.beginPath(); g.arc(cx, cy - r*0.88, r*0.11, 0, TAU); g.fill();
+    g.fillStyle = av.hatColor;
+    g.beginPath(); g.arc(cx - r*0.04, cy - r*0.9, r*0.03, 0, TAU); g.fill();
+    g.beginPath(); g.arc(cx + r*0.04, cy - r*0.9, r*0.03, 0, TAU); g.fill();
+  }
+  // earring
+  if (av.earring){
+    g.strokeStyle = '#e8c469'; g.lineWidth = r*0.06;
+    g.beginPath(); g.arc(cx - r*0.92, cy + r*0.3, r*0.14, 0, TAU); g.stroke();
+  }
+  // portrait ring
+  g.strokeStyle = 'rgba(232,196,105,0.5)'; g.lineWidth = 1.5;
+  g.beginPath(); g.arc(cx, cy, r + 2, 0, TAU); g.stroke();
+}
+
 /* ---------------- one player's half ---------------- */
 class Board {
   constructor(idx, game){
     this.idx = idx;           // 0 = bottom player, 1 = top player
     this.game = game;
     this.accent = PLAYER_ACCENT[idx];
-    this.voice = idx === 0 ? 'p1' : 'p2';
+    this.voice = AVATARS[idx].voice;   // the avatar owns the voice set
     this.reset();
   }
   reset(){
@@ -452,7 +610,13 @@ class Board {
     this.shakeUntil = 0;
     this.frostTaps = [];
     this.nextGruntAt = 0;
+    this.mood = 'idle';
+    this.moodUntil = 0;
+    this.blinkUntil = 0;
+    this.nextBlink = 0;
   }
+  setMood(m, secs, now){ this.mood = m; this.moodUntil = now + secs; }
+  moodNow(now){ return now < this.moodUntil ? this.mood : 'idle'; }
   setGeom(W, H){
     const old = this.W ? {W:this.W, H:this.H} : null;
     this.W = W; this.H = H;
@@ -539,8 +703,14 @@ class Board {
     }
     if (now >= this.nextGruntAt){ // idle pirate chatter, like PlayerFaceGestures
       const moods = ['angry','peek','shock','smile'];
-      play(this.voice + '-' + moods[Math.floor(Math.random()*moods.length)], 0.75);
+      const m = moods[Math.floor(Math.random()*moods.length)];
+      play(this.voice + '-' + m, 0.75);
+      this.setMood(m, 1.6, now);    // face matches the grunt
       this.nextGruntAt = now + rand(5, 15);
+    }
+    if (now >= this.nextBlink){
+      this.blinkUntil = now + 0.12;
+      this.nextBlink = now + rand(2, 6);
     }
   }
   tickFx(now){ // runs every frame, even after the match ends
@@ -552,6 +722,7 @@ class Board {
   failWave(now){
     play('wrong', 0.9);
     play(this.voice + '-angry', 0.95);
+    this.setMood('angry', 2, now);
     this.game.applyDamage(this.idx, AUTO_CLEAR_DMG, this.W/2, this.H*0.4);
     for (const b of this.buttons) b.failed = true;
     this.setAnnounce('TOO SLOW!', '#e0483f', now, 1.0);
@@ -560,6 +731,7 @@ class Board {
   }
   clearWave(now){
     Snd.clear();
+    this.setMood('smile', 1, now);
     this.waveIndex++;
     this.state = 'prewave';
     this.stateUntil = now + 0.6;
@@ -623,12 +795,14 @@ class Board {
     this.setAnnounce('❄ FROZEN ❄', '#a8dcff', now, FREEZE_SECS);
     Snd.freeze();
     play(this.voice + '-shock', 0.95);
+    this.setMood('shock', FREEZE_SECS, now);
   }
   applyGhost(now){
     this.ghostUntil = now + GHOST_SECS;
     this.setAnnounce('👻 CURSED', '#cfd8ff', now, 1.0);
     Snd.ghost();
     play(this.voice + '-peek', 0.9);
+    this.setMood('peek', 1.5, now);
   }
   applyInk(now){
     const a = this.playArea();
@@ -638,6 +812,7 @@ class Board {
     }
     Snd.ink();
     play(this.voice + '-shock', 0.9);
+    this.setMood('shock', 1.5, now);
   }
   applyJuggle(now){
     const live = this.buttons.filter(b=>!b.failed);
@@ -653,6 +828,7 @@ class Board {
     this.setAnnounce('🐵 JUGGLED!', '#e0a23c', now, 1.0);
     Snd.juggle();
     play(this.voice + '-angry', 0.85);
+    this.setMood('angry', 1.5, now);
   }
   applyPowder(now){
     const targets = this.buttons.filter(b=>!b.powder && !b.failed);
@@ -663,6 +839,7 @@ class Board {
     }
     this.setAnnounce('🛢 GUNPOWDER!', '#ff9c3f', now, 1.0);
     play('cast', 0.9);
+    this.setMood('shock', 1.2, now);
   }
   cannonImpact(x, y, now){
     play('boom', 1);
@@ -788,6 +965,7 @@ class Game {
     const me = this.boards[playerIdx];
     const def = POWERUPS[slot];
     play('click', 0.8);
+    me.setMood('smile', 1.2, now);   // nothing sweeter than lit gunpowder
     me.addFloat(def.icon + ' ' + def.name + '!', '#e8c469', me.W/2, me.hudH + 30, now);
     switch (def.id){
       case 'ice':    enemy.applyIce(now); break;
@@ -819,6 +997,9 @@ class Game {
   endGame(winnerIdx){
     this.running = false;
     this.winner = winnerIdx;
+    const now = performance.now()/1000;
+    this.boards[winnerIdx].setMood('smile', 9999, now);
+    this.boards[1-winnerIdx].setMood('angry', 9999, now);
     Snd.fanfare();
     play((winnerIdx === 0 ? 'p1' : 'p2') + '-smile', 1);
     play((winnerIdx === 0 ? 'p2' : 'p1') + '-angry', 0.9);
@@ -906,12 +1087,13 @@ class Game {
     // wave-timer fuse under the HUD
     if (b.state === 'active' && this.running){
       const frac = clamp((b.deadline-now)/b.wave.clear, 0, 1);
+      const fx0 = Math.round(b.hudH*1.5), fw = b.W - fx0 - 14; // clears the avatar chin
       g.fillStyle = 'rgba(0,0,0,0.4)';
-      g.fillRect(14, b.hudH+3, b.W-28, 5);
+      g.fillRect(fx0, b.hudH+3, fw, 5);
       g.fillStyle = frac > 0.35 ? '#e8c469' : '#ff5a3d';
-      g.fillRect(14, b.hudH+3, (b.W-28)*frac, 5);
+      g.fillRect(fx0, b.hudH+3, fw*frac, 5);
       if (frac < 1){
-        const fx = 14 + (b.W-28)*frac;
+        const fx = fx0 + fw*frac;
         g.fillStyle = '#fff2b0';
         g.beginPath(); g.arc(fx, b.hudH+5.5, 3.4+Math.sin(now*30)*1.2, 0, TAU); g.fill();
       }
@@ -1001,25 +1183,20 @@ class Game {
     g.globalAlpha = alpha;
     g.fillStyle = 'rgba(0,0,0,0.35)';                        // drop shadow
     g.beginPath(); g.arc(bt.x+3, bt.y+4, r, 0, TAU); g.fill();
-    const ring = g.createLinearGradient(bt.x-r, bt.y-r, bt.x+r, bt.y+r);   // gold coin ring
-    ring.addColorStop(0,'#f6dd8f'); ring.addColorStop(0.5,'#b98f3a'); ring.addColorStop(1,'#8a6420');
-    g.fillStyle = ring;
-    g.beginPath(); g.arc(bt.x, bt.y, r, 0, TAU); g.fill();
+    drawButtonBase(g, bt.x, bt.y, r, bt.ord*7 + (b.waveIndex%5)*3 + b.idx*11);
     const ghosted = now < b.ghostUntil && !bt.failed;
-    const inner = r*0.8;
     if (ghosted){
       // Ghost Curse: identity wiped — same grey face on every button
-      g.fillStyle = '#6d7379';
-      g.beginPath(); g.arc(bt.x, bt.y, inner, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(109,115,121,0.92)';
+      g.beginPath(); g.arc(bt.x, bt.y, r*0.88, 0, TAU); g.fill();
       g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = r*0.09; g.lineCap='round';
-      g.beginPath(); g.arc(bt.x, bt.y-2, inner*0.45, Math.PI*0.15, Math.PI*1.2); g.stroke();
-      g.beginPath(); g.arc(bt.x+inner*0.2, bt.y+inner*0.25, inner*0.2, 0, TAU); g.stroke();
+      g.beginPath(); g.arc(bt.x, bt.y-2, r*0.4, Math.PI*0.15, Math.PI*1.2); g.stroke();
+      g.beginPath(); g.arc(bt.x+r*0.18, bt.y+r*0.22, r*0.18, 0, TAU); g.stroke();
+    } else if (bt.failed){
+      g.fillStyle = 'rgba(85,85,85,0.85)';
+      g.beginPath(); g.arc(bt.x, bt.y, r*0.88, 0, TAU); g.fill();
     } else {
-      g.fillStyle = bt.failed ? '#555' : bt.kind.disc;
-      g.beginPath(); g.arc(bt.x, bt.y, inner, 0, TAU); g.fill();
-      if (!bt.failed) bt.kind.draw(g, bt.x, bt.y, inner);
-      g.fillStyle = 'rgba(255,255,255,0.14)';                // gloss
-      g.beginPath(); g.ellipse(bt.x, bt.y-r*0.38, r*0.55, r*0.24, 0, 0, TAU); g.fill();
+      bt.kind.draw(g, bt.x, bt.y, r);
     }
     if (bt.powder){                                          // gunpowder coating
       g.fillStyle = 'rgba(25,18,10,0.85)';
@@ -1071,7 +1248,9 @@ class Game {
     g.fillRect(0, 0, b.W, b.hudH);
     g.fillStyle = 'rgba(232,196,105,0.4)';
     g.fillRect(0, b.hudH-1, b.W, 1);
-    const bx = 14, bw = b.W - 158, bh = Math.max(14, b.hudH*0.36), by = (b.hudH-bh)/2;
+    drawPirate(g, b, b.hudH*0.85, b.hudH*0.66, b.hudH*0.55, now);
+    const bx = Math.round(b.hudH*1.85), bw = b.W - bx - 144,
+          bh = Math.max(14, b.hudH*0.36), by = (b.hudH-bh)/2;
     g.fillStyle = 'rgba(0,0,0,0.55)';
     g.fillRect(bx, by, bw, bh);
     const pct = b.hp / MAX_HP;
@@ -1155,13 +1334,8 @@ function drawFacesPreview(){
   const g = cv.getContext('2d');
   BUTTON_KINDS.forEach((k, i)=>{
     const x = i*cell + cell/2, y = (cell+pad)/2, r = cell*0.44;
-    const ring = g.createLinearGradient(x-r, y-r, x+r, y+r);
-    ring.addColorStop(0,'#f6dd8f'); ring.addColorStop(0.5,'#b98f3a'); ring.addColorStop(1,'#8a6420');
-    g.fillStyle = ring;
-    g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
-    g.fillStyle = k.disc;
-    g.beginPath(); g.arc(x, y, r*0.8, 0, TAU); g.fill();
-    k.draw(g, x, y, r*0.8);
+    drawButtonBase(g, x, y, r, i*7);
+    k.draw(g, x, y, r);
   });
 }
 

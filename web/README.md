@@ -24,6 +24,16 @@ after wave 20), −30 for letting a wave time out, −10 for wrong or stray taps
 New in this version: six single-use offensive power-ups per player —
 Ice Block, Monkey Juggler, Cannon Blast, Gunpowder Barrel, Kraken Ink, Ghost Curse.
 
+## Avatars
+
+Each player has an animated pirate avatar in their HUD (canvas-drawn, no image
+assets) that blinks, bobs, and reacts to the board: angry on failed waves and
+juggles, shocked when frozen or inked, grinning when casting a power-up or
+winning. Avatars are data-driven — the `AVATARS` array bundles each character's
+look and voice set, so adding purchasable characters later (custom visuals,
+sounds, and eventually per-avatar power-up loadouts) means adding entries, not
+rewriting rendering.
+
 ## Multiplayer readiness
 
 The code is structured so a network layer can be added without rewriting the game:
