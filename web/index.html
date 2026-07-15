@@ -294,8 +294,8 @@ const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').mat
    for pop particles. Coordinates are in units of the disc radius;
    marks reach ±0.78. */
 const BUTTON_KINDS = [
-  { id:'skull',    disc:'#f0ead8', draw(g,x,y,s){
-      const bone='#f0ead8', hole='#33241a';
+  { id:'skull',    disc:'#f0ead8', bg:'#3a4660', draw(g,x,y,s){
+      const bone='#f0ead8', hole='#3a4660';
       g.fillStyle=bone;
       g.beginPath(); g.arc(x, y-0.14*s, 0.58*s, 0, TAU); g.fill();           // cranium
       g.fillRect(x-0.36*s, y+0.1*s, 0.72*s, 0.5*s);                          // jaw
@@ -310,7 +310,7 @@ const BUTTON_KINDS = [
         g.beginPath(); g.moveTo(x+dx*s, y+0.34*s); g.lineTo(x+dx*s, y+0.6*s); g.stroke();
       }
   }},
-  { id:'anchor',   disc:'#0e4a40', draw(g,x,y,s){
+  { id:'anchor',   disc:'#0e4a40', bg:'#e3cf96', draw(g,x,y,s){
       const ink='#0e4a40';
       g.strokeStyle=ink; g.lineWidth=0.17*s; g.lineCap='round';
       g.beginPath(); g.arc(x, y-0.58*s, 0.17*s, 0, TAU); g.stroke();          // ring
@@ -321,7 +321,7 @@ const BUTTON_KINDS = [
       g.beginPath(); g.moveTo(x-0.55*s, y+0.32*s); g.lineTo(x-0.78*s, y+0.12*s); g.lineTo(x-0.4*s, y+0.05*s); g.closePath(); g.fill();
       g.beginPath(); g.moveTo(x+0.55*s, y+0.32*s); g.lineTo(x+0.78*s, y+0.12*s); g.lineTo(x+0.4*s, y+0.05*s); g.closePath(); g.fill();
   }},
-  { id:'coin',     disc:'#d4a017', draw(g,x,y,s){
+  { id:'coin',     disc:'#d4a017', bg:'#53406e', draw(g,x,y,s){
       const gold='#d4a017', shade='#95700e';
       g.fillStyle=gold;
       g.beginPath(); g.arc(x, y, 0.74*s, 0, TAU); g.fill();
@@ -341,7 +341,7 @@ const BUTTON_KINDS = [
       g.beginPath(); g.arc(x-0.12*s, y-0.12*s, 0.08*s, 0, TAU); g.fill();
       g.beginPath(); g.arc(x+0.12*s, y-0.12*s, 0.08*s, 0, TAU); g.fill();
   }},
-  { id:'bottle',   disc:'#2f6326', draw(g,x,y,s){
+  { id:'bottle',   disc:'#2f6326', bg:'#cf9440', draw(g,x,y,s){
       g.fillStyle='#2f6326';
       g.fillRect(x-0.12*s, y-0.72*s, 0.24*s, 0.36*s);                         // neck
       g.beginPath();                                                          // body
@@ -360,7 +360,7 @@ const BUTTON_KINDS = [
       g.textAlign='center'; g.textBaseline='middle';
       g.fillText('XXX', x, y+0.28*s);
   }},
-  { id:'dynamite', disc:'#a12318', draw(g,x,y,s){
+  { id:'dynamite', disc:'#a12318', bg:'#3d8a7c', draw(g,x,y,s){
       const stick='#a12318';
       for (const [dx,dy] of [[-0.34,0.1],[0.34,0.1],[0,0.02]]){
         g.fillStyle=stick;
@@ -385,7 +385,7 @@ const BUTTON_KINDS = [
         g.stroke();
       }
   }},
-  { id:'pistol',   disc:'#26292e', draw(g,x,y,s){
+  { id:'pistol',   disc:'#26292e', bg:'#b0616e', draw(g,x,y,s){
       const metal='#26292e', grip='#4a2f16';
       g.fillStyle=metal;
       g.fillRect(x-0.72*s, y-0.24*s, 1.12*s, 0.24*s);                         // barrel
@@ -402,7 +402,7 @@ const BUTTON_KINDS = [
       g.fillStyle=metal;                                                      // hammer
       g.fillRect(x+0.22*s, y-0.5*s, 0.13*s, 0.28*s);
   }},
-  { id:'rudder',   disc:'#3a2410', draw(g,x,y,s){
+  { id:'rudder',   disc:'#3a2410', bg:'#7d9ec4', draw(g,x,y,s){
       const ink='#3a2410';
       g.strokeStyle=ink; g.lineWidth=0.14*s; g.lineCap='round';
       g.beginPath(); g.arc(x, y, 0.55*s, 0, TAU); g.stroke();                 // rim
@@ -416,7 +416,7 @@ const BUTTON_KINDS = [
       g.fillStyle=ink;
       g.beginPath(); g.arc(x, y, 0.2*s, 0, TAU); g.fill();                    // hub
   }},
-  { id:'balls',    disc:'#23272e', draw(g,x,y,s){
+  { id:'balls',    disc:'#23272e', bg:'#8a9a4a', draw(g,x,y,s){
       g.fillStyle='#23272e';
       for (const [dx,dy] of [[0,-0.32],[-0.36,0.28],[0.36,0.28]]){
         g.beginPath(); g.arc(x+dx*s, y+dy*s, 0.32*s, 0, TAU); g.fill();
@@ -447,6 +447,18 @@ function drawButtonBase(g, x, y, r, seed=0){
   g.beginPath(); g.arc(x, y, r*0.93, 0, TAU); g.stroke();
   g.strokeStyle = 'rgba(255,235,190,0.3)'; g.lineWidth = r*0.05;
   g.beginPath(); g.arc(x, y, r*0.84, 0, TAU); g.stroke();
+}
+
+/* Full button face: wood base, then the kind's painted disc (every
+   kind gets its own hue — a second memory anchor besides the mark),
+   then the mark itself. */
+function drawButtonFace(g, x, y, r, kind, seed=0){
+  drawButtonBase(g, x, y, r, seed);
+  g.fillStyle = kind.bg;
+  g.beginPath(); g.arc(x, y, r*0.8, 0, TAU); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = r*0.05;    // paint edge shadow
+  g.beginPath(); g.arc(x, y, r*0.77, 0, TAU); g.stroke();
+  kind.draw(g, x, y, r);
 }
 
 function shuffled(arr){
@@ -779,7 +791,7 @@ class Board {
     this.buttons.splice(this.buttons.indexOf(b), 1);
     this.nextOrd++;
     play('pop', 1, 0.95 + b.ord*0.05);
-    this.burst(b.x, b.y, b.kind.disc, now);
+    this.burst(b.x, b.y, b.kind.bg, now);
     this.game.applyDamage(1 - this.idx, this.wave.dmg, null, null, this.idx);
     if (b.powder){
       play('boom', 0.9);
@@ -1183,8 +1195,13 @@ class Game {
     g.globalAlpha = alpha;
     g.fillStyle = 'rgba(0,0,0,0.35)';                        // drop shadow
     g.beginPath(); g.arc(bt.x+3, bt.y+4, r, 0, TAU); g.fill();
-    drawButtonBase(g, bt.x, bt.y, r, bt.ord*7 + (b.waveIndex%5)*3 + b.idx*11);
+    const seed = bt.ord*7 + (b.waveIndex%5)*3 + b.idx*11;
     const ghosted = now < b.ghostUntil && !bt.failed;
+    if (!ghosted && !bt.failed){
+      drawButtonFace(g, bt.x, bt.y, r, bt.kind, seed);
+    } else {
+      drawButtonBase(g, bt.x, bt.y, r, seed);
+    }
     if (ghosted){
       // Ghost Curse: identity wiped — same grey face on every button
       g.fillStyle = 'rgba(109,115,121,0.92)';
@@ -1195,8 +1212,6 @@ class Game {
     } else if (bt.failed){
       g.fillStyle = 'rgba(85,85,85,0.85)';
       g.beginPath(); g.arc(bt.x, bt.y, r*0.88, 0, TAU); g.fill();
-    } else {
-      bt.kind.draw(g, bt.x, bt.y, r);
     }
     if (bt.powder){                                          // gunpowder coating
       g.fillStyle = 'rgba(25,18,10,0.85)';
@@ -1334,8 +1349,7 @@ function drawFacesPreview(){
   const g = cv.getContext('2d');
   BUTTON_KINDS.forEach((k, i)=>{
     const x = i*cell + cell/2, y = (cell+pad)/2, r = cell*0.44;
-    drawButtonBase(g, x, y, r, i*7);
-    k.draw(g, x, y, r);
+    drawButtonFace(g, x, y, r, k, i*7);
   });
 }
 
