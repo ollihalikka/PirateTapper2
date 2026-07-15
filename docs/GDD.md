@@ -87,9 +87,10 @@ Each wave deals a random subset (Fisher–Yates shuffle) of the pool — with 16
 kinds and only 2–6 per wave, repetition across waves is rare, so "the rum
 bottle came third" is a fresh fact every wave.
 
-Placement: random inside the play area, minimum spacing 2.35 × button radius,
+Placement: random inside the play area, minimum spacing 2.55 × button radius,
 up to 300 retries per button (mirrors the original's 500-retry loop).
-Button radius scales with board size, clamped 22–46 px.
+Button radius scales with board size, clamped 22–46 px. Icon buttons are
+drawn full-face and ringed with a gold frame (covering the source PNG's edge).
 
 ---
 
@@ -108,7 +109,7 @@ A character = **look + voice set + two abilities**:
 | Character | Fantasy | Basic (8 s CD) | Ultimate |
 |---|---|---|---|
 | **Redbeard** *the Cannoneer* | reliable aggression | 💣 **Pot Shot** — 1 cannonball, 6 dmg | 💥 **Broadside** — 5 cannonballs, 8 dmg each (40 total) over ~1.9 s |
-| **Whitedeath** *the Iceberg* | tempo control | ❄️ **Cold Snap** — freeze enemy board 0.8 s | 🧊 **Deep Freeze** — freeze 2.6 s; enemy wave fuse keeps burning (threatens the −30 auto-clear) |
+| **White Death** *the Iceberg* | tempo control | ❄️ **Cold Snap** — freeze enemy board 0.8 s | 🧊 **Deep Freeze** — freeze 2.6 s; enemy wave fuse keeps burning (threatens the −30 auto-clear) |
 | **Inkeye** *the Cursed* | memory attack | 🦑 **Ink Spit** — 1 ink blob hides part of the board 2.5 s | 👻 **Kraken's Curse** — 4 s: all faces wiped to identical grey + positions juggled + 2 ink blobs |
 
 Ability rules:
@@ -163,7 +164,8 @@ announcement.
 
 ## 6. Characters on screen: avatars
 
-Animated canvas-drawn portraits in each player's HUD (no image assets).
+Portraits in each player's HUD (and on the select cards): painted art when
+present (`assets/characters/<id>.png`), else an animated canvas-drawn pirate.
 Data-driven: `AVATARS` = look + voice set, `CHARACTERS` = kit + avatar ref.
 
 Reactions (synced with the original game's recorded voice grunts):
@@ -181,7 +183,7 @@ Plus idle bobbing and randomized blinks. The three characters now use painted
 portrait art (`assets/characters/<id>.png`: `redbeard`, `inkeye`,
 `whitedeath`), which replaces the procedural face; the canvas-drawn pirate
 remains the fallback and still animates per mood. Voice sets: Redbeard = p1,
-Inkeye & Whitedeath = p2 (adding a third voice set is a `VOICES` entry + files).
+Inkeye & White Death = p2 (adding a third voice set is a `VOICES` entry + files).
 
 ---
 
@@ -234,7 +236,7 @@ The MVP mode: two players, one touchscreen, boards facing each other (§2).
   keeping the character's identity:
   - Redbeard: cannons blast buttons off *your* board (auto-pop the next in
     order).
-  - Whitedeath: freezes the **fuse**, not a board — buys time.
+  - White Death: freezes the **fuse**, not a board — buys time.
   - Inkeye: the curse becomes second sight — briefly reveals order hints.
   Doubles as onboarding and solo skill training; the high-score chase is the
   retention hook.

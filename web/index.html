@@ -192,7 +192,7 @@ const CHARACTERS = [
             desc:'Lob a cannonball at the enemy deck (6 damage).' },
     ult:  { icon:'💥', name:'Broadside',
             desc:'Rake the enemy deck with five cannonballs (8 damage each).' } },
-  { id:'frostjaw', name:'Whitedeath', title:'the Iceberg', avatar:2, accentIcon:'❄️',
+  { id:'frostjaw', name:'White Death', title:'the Iceberg', avatar:2, accentIcon:'❄️',
     basic:{ icon:'❄️', name:'Cold Snap', cd:8,
             desc:'Flash-freeze the enemy board for 0.8s.' },
     ult:  { icon:'🧊', name:'Deep Freeze',
@@ -258,6 +258,9 @@ async function loadAssets(done){
     jobs.push(loadImage('char:'+av.id, png).then(async ok => {
       if (!ok) return;
       const metaFile = 'characters/'+av.id+'.json';
+      // Sprite-sheet JSON needs fetch, which is blocked under file:// — skip
+      // the probe there (sheets require HTTP or the inlined artifact anyway).
+      if (location.protocol === 'file:' && !ASSET_INLINE) return;
       const meta = assetExists(metaFile) ? await loadJSON(metaFile) : null;
       if (meta) SHEETS[av.id] = { img: IMG['char:'+av.id], meta };
     }));
@@ -550,8 +553,21 @@ function drawButtonFace(g, x, y, r, kind, seed=0){
   if (icon){
     // The supplied icons are complete circular buttons (baked-in background),
     // so they fill the whole face — no wooden disc or painted color beneath.
+    // Clip to a clean circle (hides rough PNG edges) then ring it in gold,
+    // where the carved wooden frame used to sit.
     const s = r*2.18;
+    g.save();
+    g.beginPath(); g.arc(x, y, r*0.99, 0, TAU); g.clip();
     g.drawImage(icon, x-s/2, y-s/2, s, s);
+    g.restore();
+    const gold = g.createLinearGradient(x-r, y-r, x+r, y+r);
+    gold.addColorStop(0, '#f7e08f'); gold.addColorStop(0.5, '#c99a3e'); gold.addColorStop(1, '#7d5a1e');
+    g.strokeStyle = gold; g.lineWidth = r*0.15;
+    g.beginPath(); g.arc(x, y, r*0.92, 0, TAU); g.stroke();           // gold band
+    g.strokeStyle = 'rgba(40,24,8,0.75)'; g.lineWidth = r*0.05;
+    g.beginPath(); g.arc(x, y, r*0.995, 0, TAU); g.stroke();          // dark outer edge
+    g.strokeStyle = 'rgba(255,244,205,0.45)'; g.lineWidth = r*0.03;
+    g.beginPath(); g.arc(x, y, r*0.845, 0, TAU); g.stroke();          // inner highlight
     return;
   }
   // Procedural fallback: wooden disc + the kind's painted color + its mark.
