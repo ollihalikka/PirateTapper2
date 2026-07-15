@@ -21,18 +21,30 @@ opponent. Ported from the Unity original:
 300 HP, the 20-wave schedule from `GameManager.CreateWaves()` (endless overtime
 after wave 20), −30 for letting a wave time out, −10 for wrong or stray taps.
 
-New in this version: six single-use offensive power-ups per player —
-Ice Block, Monkey Juggler, Cannon Blast, Gunpowder Barrel, Kraken Ink, Ghost Curse.
+New in this version: playable characters. Before each match both players pick
+a pirate on their own half of the screen. Each character has two abilities:
+
+- a **basic** on an 8-second cooldown (minor effect), and
+- an **ultimate** charged by clearing waves — charge = 10 base + up to 8 for
+  speed (time left on the fuse) + 7 for a perfect clear (no mis-taps), so an
+  ultimate comes online roughly 2–4 times per match. Charge gained while full
+  is wasted, so hoarding costs you.
+
+| Character | Basic (8s CD) | Ultimate |
+|---|---|---|
+| **Redbeard** the Cannoneer | Pot Shot — one cannonball, 6 dmg | Broadside — five cannonballs, 8 dmg each |
+| **Frostjaw** the Iceberg | Cold Snap — 0.8s freeze | Deep Freeze — 2.6s freeze while their wave timer burns |
+| **Inkeye** the Cursed | Ink Spit — one ink blob, 2.5s | Kraken's Curse — 4s of wiped faces + juggled buttons + ink |
 
 ## Avatars
 
 Each player has an animated pirate avatar in their HUD (canvas-drawn, no image
 assets) that blinks, bobs, and reacts to the board: angry on failed waves and
 juggles, shocked when frozen or inked, grinning when casting a power-up or
-winning. Avatars are data-driven — the `AVATARS` array bundles each character's
-look and voice set, so adding purchasable characters later (custom visuals,
-sounds, and eventually per-avatar power-up loadouts) means adding entries, not
-rewriting rendering.
+winning. Characters are data-driven — `CHARACTERS` bundles kit definitions and
+`AVATARS` the looks and voice sets, so adding purchasable characters later
+(custom visuals, sounds, and ability loadouts) means adding entries, not
+rewriting rendering or game logic.
 
 ## Multiplayer readiness
 

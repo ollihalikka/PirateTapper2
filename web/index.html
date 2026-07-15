@@ -67,7 +67,7 @@
   .legend{
     margin:clamp(12px,2.5vh,22px) 0; border-top:1px solid rgba(232,196,105,.25); border-bottom:1px solid rgba(232,196,105,.25);
     padding:clamp(10px,2vh,18px) 2px;
-    display:grid; grid-template-columns:1fr 1fr; gap:9px 16px; text-align:left;
+    display:grid; grid-template-columns:1fr; gap:12px; text-align:left;
   }
   .legend .pu{ display:flex; gap:9px; align-items:flex-start; }
   .legend .ico{ font-size:20px; line-height:1.15; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
@@ -120,7 +120,7 @@
         <div>⚓ <b>Two pirates, one screen.</b> Each of ye taps on yer own half — sit facing each other.</div>
         <div>⚓ Buttons surface one by one — <b>watch the order they appear.</b> Then pop them in that same order. No numbers, no hints: only the faces, and yer memory.</div>
         <div>⚓ Every correct pop cannonballs the enemy's health. Too slow to clear a wave? <b>−30.</b> Wrong button or bare deck? <b>−10.</b></div>
-        <div>⚓ Yer six <b>dirty tricks</b> sit by yer edge. One use each. No mercy.</div>
+        <div>⚓ <b>Choose yer pirate.</b> Each has a quick trick on a cooldown, and an <b>ultimate</b> charged by clearing waves — the faster and cleaner the clear, the more it charges.</div>
       </div>
       <canvas id="facesPreview"></canvas>
       <div class="faces-caption">The eight buttons of the deep</div>
@@ -164,9 +164,8 @@ const AUTO_CLEAR_DMG = 30;
 const WRONG_TAP_DMG = 10;
 const EMPTY_TAP_DMG = 10;
 const POWDER_SELF_DMG = 12;
-const CANNON_HITS = 3, CANNON_DMG = 8;
-const FREEZE_SECS = 1.5, INK_SECS = 3.5, GHOST_SECS = 3.0;
-const PU_COOLDOWN = 2.0;
+const BASIC_FIRST_CD = 4;   // basics come online shortly after the start
+const ULT_MAX = 100;
 
 /* Waves ported from the Unity GameManager.CreateWaves():
    n buttons, seconds to form, seconds to clear, damage per pop. */
@@ -185,13 +184,24 @@ function waveFor(i){
   return { n:6, form:0.7, clear:Math.max(3.2, 4.6 - k*0.15), dmg:12 };
 }
 
-const POWERUPS = [
-  {id:'ice',    icon:'❄️', name:'Ice Block',        desc:'Freeze the enemy board 1.5s — their wave timer keeps burning.'},
-  {id:'monkey', icon:'🐵', name:'Monkey Juggler',   desc:'Scramble the positions of the enemy’s buttons.'},
-  {id:'cannon', icon:'💣', name:'Cannon Blast',     desc:'Three cannonballs, 8 damage apiece, straight to their deck.'},
-  {id:'powder', icon:'🛢️', name:'Gunpowder Barrel', desc:'Coat 3 enemy buttons — popping one costs them 12 health.'},
-  {id:'ink',    icon:'🦑', name:'Kraken Ink',       desc:'Splat ink over their board for 3.5s, hiding what’s beneath.'},
-  {id:'ghost',  icon:'👻', name:'Ghost Curse',      desc:'Wipes the faces off their buttons for 3s. Pure memory.'},
+/* Character kits: each pirate has a cooldown basic and an ultimate
+   charged by clearing waves (faster + cleaner = more charge). */
+const CHARACTERS = [
+  { id:'redbeard', name:'Redbeard', title:'the Cannoneer', avatar:0, accentIcon:'💣',
+    basic:{ icon:'💣', name:'Pot Shot', cd:8,
+            desc:'Lob a cannonball at the enemy deck (6 damage).' },
+    ult:  { icon:'💥', name:'Broadside',
+            desc:'Rake the enemy deck with five cannonballs (8 damage each).' } },
+  { id:'frostjaw', name:'Frostjaw', title:'the Iceberg', avatar:2, accentIcon:'❄️',
+    basic:{ icon:'❄️', name:'Cold Snap', cd:8,
+            desc:'Flash-freeze the enemy board for 0.8s.' },
+    ult:  { icon:'🧊', name:'Deep Freeze',
+            desc:'Freeze the enemy board solid for 2.6s — their wave timer keeps burning.' } },
+  { id:'inkeye', name:'Inkeye', title:'the Cursed', avatar:1, accentIcon:'🦑',
+    basic:{ icon:'🦑', name:'Ink Spit', cd:8,
+            desc:'Splat one ink blob over the enemy board for 2.5s.' },
+    ult:  { icon:'👻', name:'Kraken’s Curse',
+            desc:'4 seconds of chaos: faces wiped, buttons juggled, ink everywhere.' } },
 ];
 
 const PLAYER_ACCENT = ['#39b795','#e0483f'];
@@ -498,13 +508,14 @@ const AVATARS = [
   { id:'redbeard', voice:'p1', skin:'#e2a878', beard:'#8a3f1a', brow:'#5c2d14',
     hat:'bandana', hatColor:'#b93d32', hatDot:'#f0e3c0', eyepatch:false, earring:true },
   { id:'blackhat', voice:'p2', skin:'#c98e5f', beard:'#332a21', brow:'#1c1610',
-    hat:'tricorn', hatColor:'#26262e', hatTrim:'#e8c469', eyepatch:true, earring:false },
+    hat:'tricorn', hatColor:'#26262e', hatTrim:'#9a6ec9', eyepatch:true, earring:false },
+  { id:'frostjaw', voice:'p2', skin:'#cfa27e', beard:'#d8dde2', brow:'#b8c4cc',
+    hat:'bandana', hatColor:'#5f9cbf', hatDot:'#eef6fa', eyepatch:false, earring:false },
 ];
 
-function drawPirate(g, b, cx, cy, r, now){
-  const av = AVATARS[b.idx];
-  const mood = b.moodNow(now);
-  cy += Math.sin(now*2 + b.idx*2.6)*r*0.05;                    // idle bob
+function drawPirate(g, av, cx, cy, r, now, mood, blink){
+  const ph = AVATARS.indexOf(av);
+  cy += Math.sin(now*2 + ph*2.6)*r*0.05;                       // idle bob
   if (mood === 'shock' && !REDUCED_MOTION) cx += Math.sin(now*32)*r*0.03;
   if (mood === 'angry' && !REDUCED_MOTION) cy += Math.sin(now*18)*r*0.02;
   // head
@@ -539,7 +550,6 @@ function drawPirate(g, b, cx, cy, r, now){
     g.stroke();
   }
   // eyes
-  const blink = now < b.blinkUntil;
   const ey = cy - r*0.14, ex = r*0.34, er = r*0.15;
   for (const side of [-1, 1]){
     const x = cx + side*ex;
@@ -620,7 +630,8 @@ class Board {
     this.idx = idx;           // 0 = bottom player, 1 = top player
     this.game = game;
     this.accent = PLAYER_ACCENT[idx];
-    this.voice = AVATARS[idx].voice;   // the avatar owns the voice set
+    this.avatar = AVATARS[idx];        // placeholder until a character is chosen
+    this.voice = this.avatar.voice;    // the avatar owns the voice set
     this.reset();
   }
   reset(){
@@ -645,6 +656,12 @@ class Board {
     this.moodUntil = 0;
     this.blinkUntil = 0;
     this.nextBlink = 0;
+    this.charIdx = null;      // set during the select phase
+    this.character = null;
+    this.basicCdUntil = 0;
+    this.ultCharge = 0;
+    this.waveMistap = false;
+    this.waveActivatedAt = 0;
   }
   setMood(m, secs, now){ this.mood = m; this.moodUntil = now + secs; }
   moodNow(now){ return now < this.moodUntil ? this.mood : 'idle'; }
@@ -654,13 +671,12 @@ class Board {
     const m = Math.min(W, H);
     this.R = clamp(m*0.085, 22, 46);            // button radius
     this.hudH = clamp(H*0.12, 40, 60);          // strip along the divider (local y=0)
-    this.puR = clamp(m*0.055, 19, 28);          // power-up icon radius
-    this.puY = H - this.puR - 14;               // power-up row hugs the player's own edge
-    const spacing = Math.min(this.puR*2.75, (W-40)/POWERUPS.length);
-    const rowW = spacing*(POWERUPS.length-1);
-    this.puX = POWERUPS.map((_,i)=> W/2 - rowW/2 + i*spacing);
+    this.puR = clamp(m*0.06, 20, 30);           // ability button radius
+    this.puY = H - this.puR*1.35 - 12;          // ability pair hugs the player's own edge
+    this.basicX = W/2 - this.puR*2.1;
+    this.ultX = W/2 + this.puR*2.1;
     this.playTop = this.hudH + this.R*0.55;
-    this.playBot = this.puY - this.puR - this.R*0.6;
+    this.playBot = this.puY - this.puR*1.6 - this.R*0.6;
     if (old){ // keep buttons proportionally placed through resizes
       const sx = W/old.W, sy = H/old.H;
       for (const b of this.buttons){ b.x*=sx; b.tx*=sx; b.y*=sy; b.ty*=sy; }
@@ -681,6 +697,7 @@ class Board {
     this.buttons = [];
     this.nextOrd = 0;
     this.spawned = 0;
+    this.waveMistap = false;
     this.positions = this.genPositions(this.wave.n);
     this.kinds = shuffled(BUTTON_KINDS).slice(0, this.wave.n);
     while (this.kinds.length < this.wave.n)      // overtime waves can exceed 8
@@ -718,6 +735,7 @@ class Board {
       if (this.spawned >= this.wave.n){
         for (const b of this.buttons) b.active = true;
         this.deadline = now + this.wave.clear;
+        this.waveActivatedAt = now;
         this.state = 'active';
       }
     }
@@ -739,12 +757,12 @@ class Board {
       this.setMood(m, 1.6, now);    // face matches the grunt
       this.nextGruntAt = now + rand(5, 15);
     }
+  }
+  tickFx(now){ // runs every frame, even outside the match
     if (now >= this.nextBlink){
       this.blinkUntil = now + 0.12;
       this.nextBlink = now + rand(2, 6);
     }
-  }
-  tickFx(now){ // runs every frame, even after the match ends
     this.inkBlobs = this.inkBlobs.filter(k => now < k.until);
     this.particles = this.particles.filter(p => now - p.t0 < p.life);
     this.floats = this.floats.filter(f => now - f.t0 < 1.1);
@@ -763,6 +781,17 @@ class Board {
   clearWave(now){
     Snd.clear();
     this.setMood('smile', 1, now);
+    // ult charge: base + speed (time left on the fuse) + perfect clear
+    const remainFrac = clamp((this.deadline - now) / this.wave.clear, 0, 1);
+    const perfect = !this.waveMistap;
+    const gain = Math.round(10 + 8*remainFrac + (perfect ? 7 : 0));
+    if (this.ultCharge < ULT_MAX){
+      this.ultCharge = Math.min(ULT_MAX, this.ultCharge + gain);
+      this.addFloat('+' + gain + '⚡', '#9ad0ff', this.W/2, this.playTop + 40, now);
+      if (this.ultCharge >= ULT_MAX){
+        this.setAnnounce('⚡ ULTIMATE READY', '#ffd44d', now, 1.2, false);
+      }
+    }
     this.waveIndex++;
     this.state = 'prewave';
     this.stateUntil = now + 0.6;
@@ -771,13 +800,21 @@ class Board {
     this.announce = { text, color, until: now+secs, t0: now, big };
   }
   /* --- input; returns nothing, emits events through game --- */
+  abilityAt(lx, ly){
+    if (Math.hypot(lx-this.basicX, ly-this.puY) <= this.puR*1.2) return 'basic';
+    if (Math.hypot(lx-this.ultX, ly-this.puY) <= this.puR*1.55) return 'ult';
+    return null;
+  }
   tap(lx, ly, now){
-    // power-up row is usable even while frozen (counterplay!)
-    for (let i=0;i<POWERUPS.length;i++){
-      if (Math.hypot(lx-this.puX[i], ly-this.puY) <= this.puR*1.25){
-        this.game.usePowerup(this.idx, i, now);
-        return;
-      }
+    if (this.game.phase === 'select'){
+      this.game.trySelect(this.idx, lx, ly, now);
+      return;
+    }
+    // ability buttons are usable even while frozen (counterplay!)
+    const ab = this.abilityAt(lx, ly);
+    if (ab){
+      this.game.useAbility(this.idx, ab, now);
+      return;
     }
     if (!this.game.running) return;
     if (now < this.frozenUntil){
@@ -796,12 +833,14 @@ class Board {
         this.popButton(hit, now);
       } else {
         play('wrong', 0.85);
+        this.waveMistap = true;
         this.addX(hit.x, hit.y, now);
         this.game.applyDamage(this.idx, WRONG_TAP_DMG, hit.x, hit.y);
       }
-    } else if (ly > this.hudH && ly < this.puY - this.puR*1.4 &&
+    } else if (ly > this.hudH && ly < this.puY - this.puR*1.6 &&
                (this.state === 'active' || this.state === 'forming')){
       play('wrong', 0.7);
+      this.waveMistap = true;
       this.addRipple(lx, ly, now);
       this.game.applyDamage(this.idx, EMPTY_TAP_DMG, lx, ly);
     }
@@ -821,25 +860,25 @@ class Board {
     if (this.buttons.length === 0 && this.state === 'active') this.clearWave(now);
   }
   /* --- effects applied by the enemy --- */
-  applyIce(now){
-    this.frozenUntil = now + FREEZE_SECS;
-    this.setAnnounce('❄ FROZEN ❄', '#a8dcff', now, FREEZE_SECS);
+  applyIce(now, secs){
+    this.frozenUntil = now + secs;
+    this.setAnnounce('❄ FROZEN ❄', '#a8dcff', now, secs);
     Snd.freeze();
     play(this.voice + '-shock', 0.95);
-    this.setMood('shock', FREEZE_SECS, now);
+    this.setMood('shock', secs, now);
   }
-  applyGhost(now){
-    this.ghostUntil = now + GHOST_SECS;
+  applyGhost(now, secs){
+    this.ghostUntil = now + secs;
     this.setAnnounce('👻 CURSED', '#cfd8ff', now, 1.0);
     Snd.ghost();
     play(this.voice + '-peek', 0.9);
     this.setMood('peek', 1.5, now);
   }
-  applyInk(now){
+  applyInk(now, count, secs){
     const a = this.playArea();
-    for (let i=0;i<3;i++){
+    for (let i=0;i<count;i++){
       this.inkBlobs.push({ x:rand(a.x0,a.x1), y:rand(a.y0,a.y1),
-        r:this.R*rand(1.9,2.6), until:now+INK_SECS, t0:now, ph:rand(0,TAU) });
+        r:this.R*rand(1.9,2.6), until:now+secs, t0:now, ph:rand(0,TAU) });
     }
     Snd.ink();
     play(this.voice + '-shock', 0.9);
@@ -861,7 +900,7 @@ class Board {
     play(this.voice + '-angry', 0.85);
     this.setMood('angry', 1.5, now);
   }
-  applyPowder(now){
+  applyPowder(now){ // not in any MVP kit; kept for future characters
     const targets = this.buttons.filter(b=>!b.powder && !b.failed);
     for (let i=0; i<3 && targets.length; i++){
       const k = Math.floor(Math.random()*targets.length);
@@ -944,7 +983,7 @@ class Game {
     this.cv = canvas;
     this.ctx = canvas.getContext('2d');
     this.boards = [new Board(0,this), new Board(1,this)];
-    this.pu = null;          // per-player power-up state
+    this.phase = 'idle';     // idle | select | countdown | match
     this.running = false;
     this.pendingHits = [];   // scheduled cannonballs
     this.lastT = performance.now()/1000;
@@ -965,15 +1004,59 @@ class Game {
     this.divBot = this.bH + this.divH;
     for (const b of this.boards) b.setGeom(this.W, this.bH);
   }
-  start(){
+  enterSelect(){
     const now = performance.now()/1000;
-    for (const b of this.boards) b.reset();
-    for (const b of this.boards) b.setGeom(this.W, this.bH);
-    this.pu = [0,1].map(()=>({ used:POWERUPS.map(()=>false), cooldownUntil:0 }));
+    this.phase = 'select';
+    this.running = false;
     this.pendingHits = [];
+    for (const b of this.boards){
+      b.reset();
+      b.setGeom(this.W, this.bH);
+      b.nextBlink = now + rand(1, 3);
+    }
+  }
+  /* three character cards per board, tapped on each player's own side */
+  cardRect(b, i){
+    const gap = Math.min(b.W*0.035, 16);
+    const w = Math.min((b.W - gap*2 - 28)/3, 170);
+    const h = Math.min(b.H*0.56, w*1.5);
+    const total = w*3 + gap*2;
+    return { x: b.W/2 - total/2 + i*(w+gap), y: b.H*0.26, w, h };
+  }
+  trySelect(boardIdx, lx, ly, now){
+    const b = this.boards[boardIdx];
+    for (let i=0;i<CHARACTERS.length;i++){
+      const r = this.cardRect(b, i);
+      if (lx >= r.x && lx <= r.x+r.w && ly >= r.y && ly <= r.y+r.h){
+        this.selectChar(boardIdx, i, now);
+        return;
+      }
+    }
+  }
+  selectChar(boardIdx, ci, now){
+    if (this.phase !== 'select') return;
+    const b = this.boards[boardIdx];
+    b.charIdx = ci;
+    b.character = CHARACTERS[ci];
+    b.avatar = AVATARS[CHARACTERS[ci].avatar];
+    b.voice = b.avatar.voice;
+    b.setMood('smile', 1.4, now);
+    play('click', 0.7);
+    play(b.voice + '-smile', 0.9);
+    if (this.boards.every(x => x.charIdx != null)){
+      this.phase = 'countdown';
+      this.matchStartAt = now + 1.1;
+    }
+  }
+  beginMatch(now){
+    this.phase = 'match';
     this.running = true;
     this.winner = -1;
-    for (const b of this.boards) b.begin(now);
+    for (const b of this.boards){
+      b.basicCdUntil = now + BASIC_FIRST_CD;
+      b.ultCharge = 0;
+      b.begin(now);
+    }
   }
   /* screen → board-local. Board 1 (top) is rotated 180° so its player
      faces the screen from the opposite side. */
@@ -987,31 +1070,44 @@ class Game {
     if (sy >= this.divBot)      this.boards[0].tap(sx, sy - this.divBot, now);
     else if (sy <= this.divTop) this.boards[1].tap(this.W - sx, this.divTop - sy, now);
   }
-  usePowerup(playerIdx, slot, now){
-    const st = this.pu[playerIdx];
-    if (!this.running || st.used[slot] || now < st.cooldownUntil){ Snd.deny(); return; }
-    st.used[slot] = true;
-    st.cooldownUntil = now + PU_COOLDOWN;
-    const enemy = this.boards[1 - playerIdx];
-    const me = this.boards[playerIdx];
-    const def = POWERUPS[slot];
-    play('click', 0.8);
-    me.setMood('smile', 1.2, now);   // nothing sweeter than lit gunpowder
-    me.addFloat(def.icon + ' ' + def.name + '!', '#e8c469', me.W/2, me.hudH + 30, now);
-    switch (def.id){
-      case 'ice':    enemy.applyIce(now); break;
-      case 'monkey': enemy.applyJuggle(now); break;
-      case 'ghost':  enemy.applyGhost(now); break;
-      case 'ink':    enemy.applyInk(now); break;
-      case 'powder': enemy.applyPowder(now); break;
-      case 'cannon': {
-        const a = enemy.playArea();
-        for (let i=0;i<CANNON_HITS;i++){
-          this.pendingHits.push({ t: now + 0.35 + i*0.45, board: 1 - playerIdx,
-            x: rand(a.x0, a.x1), y: rand(a.y0, a.y1) });
-        }
-        break;
+  useAbility(playerIdx, which, now){
+    if (this.phase !== 'match' || !this.running){ Snd.deny(); return; }
+    const me = this.boards[playerIdx], enemy = this.boards[1 - playerIdx];
+    const ch = me.character;
+    if (!ch) return;
+    if (which === 'basic'){
+      if (now < me.basicCdUntil){ Snd.deny(); return; }
+      me.basicCdUntil = now + ch.basic.cd;
+      play('click', 0.8);
+      me.setMood('smile', 0.8, now);
+      me.addFloat(ch.basic.icon + ' ' + ch.basic.name + '!', '#e8c469', me.W/2, me.hudH + 30, now);
+      switch (ch.id){
+        case 'redbeard': this.scheduleCannons(1 - playerIdx, 1, 6, now); break;
+        case 'frostjaw': enemy.applyIce(now, 0.8); break;
+        case 'inkeye':   enemy.applyInk(now, 1, 2.5); break;
       }
+    } else {
+      if (me.ultCharge < ULT_MAX){ Snd.deny(); return; }
+      me.ultCharge = 0;
+      play('cast', 0.9);
+      me.setMood('smile', 1.5, now);
+      me.setAnnounce(ch.ult.icon + ' ' + ch.ult.name.toUpperCase() + '!', '#ffd44d', now, 1.3);
+      switch (ch.id){
+        case 'redbeard': this.scheduleCannons(1 - playerIdx, 5, 8, now); break;
+        case 'frostjaw': enemy.applyIce(now, 2.6); break;
+        case 'inkeye':
+          enemy.applyGhost(now, 4);
+          enemy.applyJuggle(now);
+          enemy.applyInk(now, 2, 4);
+          break;
+      }
+    }
+  }
+  scheduleCannons(boardIdx, n, dmg, now){
+    const a = this.boards[boardIdx].playArea();
+    for (let i=0;i<n;i++){
+      this.pendingHits.push({ t: now + 0.35 + i*0.38, board: boardIdx, dmg,
+        x: rand(a.x0, a.x1), y: rand(a.y0, a.y1) });
     }
   }
   /* the single choke-point every hit goes through — this is the
@@ -1055,13 +1151,14 @@ class Game {
     const dt = Math.min(0.05, now - this.lastT);
     this.lastT = now;
     for (const b of this.boards) b.tickFx(now);
+    if (this.phase === 'countdown' && now >= this.matchStartAt) this.beginMatch(now);
     if (this.running){
       for (const b of this.boards) b.update(now, dt);
       for (let i=this.pendingHits.length-1; i>=0; i--){
         const h = this.pendingHits[i];
         if (now >= h.t){
           this.boards[h.board].cannonImpact(h.x, h.y, now);
-          this.applyDamage(h.board, CANNON_DMG, h.x, h.y);
+          this.applyDamage(h.board, h.dmg, h.x, h.y);
           this.pendingHits.splice(i,1);
         }
       }
@@ -1114,6 +1211,11 @@ class Game {
       g.translate(rand(-k,k), rand(-k,k));
     }
     g.drawImage(b.planks, 0, 0);
+
+    if (this.phase === 'select' || this.phase === 'countdown'){
+      this.renderSelect(g, b, now);
+      return;
+    }
 
     // wave-timer fuse under the HUD
     if (b.state === 'active' && this.running){
@@ -1204,7 +1306,7 @@ class Game {
       g.globalAlpha = 1;
     }
     this.renderHud(g, b, now);
-    this.renderPowerups(g, b, now);
+    this.renderAbilities(g, b, now);
   }
   renderButton(g, b, bt, now){
     const grow = clamp((now - bt.born)/0.16, 0, 1);
@@ -1282,7 +1384,8 @@ class Game {
     g.fillRect(0, 0, b.W, b.hudH);
     g.fillStyle = 'rgba(232,196,105,0.4)';
     g.fillRect(0, b.hudH-1, b.W, 1);
-    drawPirate(g, b, b.hudH*0.85, b.hudH*0.66, b.hudH*0.55, now);
+    drawPirate(g, b.avatar, b.hudH*0.85, b.hudH*0.66, b.hudH*0.55, now,
+               b.moodNow(now), now < b.blinkUntil);
     const bx = Math.round(b.hudH*1.85), bw = b.W - bx - 144,
           bh = Math.max(14, b.hudH*0.36), by = (b.hudH-bh)/2;
     g.fillStyle = 'rgba(0,0,0,0.55)';
@@ -1303,10 +1406,11 @@ class Game {
     }
     g.font = `700 ${Math.round(bh*0.72)}px -apple-system, "Segoe UI", sans-serif`;
     g.textAlign='left'; g.textBaseline='middle';
+    const hudName = b.character ? b.character.name.toUpperCase() : PLAYER_NAME[b.idx];
     g.strokeStyle = 'rgba(0,0,0,0.65)'; g.lineWidth = 3;
-    g.strokeText(PLAYER_NAME[b.idx], bx+7, by+bh/2+1);
+    g.strokeText(hudName, bx+7, by+bh/2+1);
     g.fillStyle = b.accent;
-    g.fillText(PLAYER_NAME[b.idx], bx+7, by+bh/2+1);
+    g.fillText(hudName, bx+7, by+bh/2+1);
     g.textAlign='right';
     g.strokeText(String(b.hp), bx+bw-7, by+bh/2+1);
     g.fillStyle = '#f0e3c0';
@@ -1315,50 +1419,117 @@ class Game {
     g.fillStyle = '#e8c469';
     g.fillText('WAVE ' + (b.waveIndex+1), b.W-14, b.hudH/2+1);
   }
-  renderPowerups(g, b, now){
-    const st = this.pu ? this.pu[b.idx] : null;
-    for (let i=0;i<POWERUPS.length;i++){
-      const x = b.puX[i], y = b.puY, r = b.puR;
-      const used = st ? st.used[i] : false;
-      const cooling = st && !used && now < st.cooldownUntil;
-      const ready = st && !used && !cooling && this.running;
-      g.globalAlpha = used ? 0.28 : cooling ? 0.55 : 1;
+  renderAbilities(g, b, now){
+    const ch = b.character;
+    if (!ch) return;
+    const y = b.puY;
+    // basic: cooldown chip
+    {
+      const x = b.basicX, r = b.puR;
+      const cooling = now < b.basicCdUntil;
+      g.globalAlpha = cooling ? 0.6 : 1;
       g.fillStyle = 'rgba(0,0,0,0.4)';
       g.beginPath(); g.arc(x+2, y+3, r, 0, TAU); g.fill();
-      g.fillStyle = used ? '#2a2119' : '#3a2c17';
+      g.fillStyle = '#3a2c17';
       g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
-      g.strokeStyle = ready ? '#e8c469' : 'rgba(232,196,105,0.35)';
-      g.lineWidth = ready ? 2.5 : 1.5;
+      g.strokeStyle = cooling ? 'rgba(232,196,105,0.35)' : '#e8c469';
+      g.lineWidth = cooling ? 1.5 : 2.5;
       g.beginPath(); g.arc(x, y, r, 0, TAU); g.stroke();
-      if (ready){
-        g.strokeStyle = `rgba(232,196,105,${0.3+Math.sin(now*4+i)*0.2})`;
-        g.lineWidth = 1;
-        g.beginPath(); g.arc(x, y, r+4, 0, TAU); g.stroke();
-      }
-      g.font = `${Math.round(r*1.15)}px serif`;
+      g.font = `${Math.round(r*1.05)}px serif`;
       g.textAlign='center'; g.textBaseline='middle';
-      g.fillText(POWERUPS[i].icon, x, y+1);
-      if (used){
-        g.strokeStyle = 'rgba(224,72,63,0.9)'; g.lineWidth = 3; g.lineCap = 'round';
-        g.beginPath();
-        g.moveTo(x-r*0.55, y-r*0.55); g.lineTo(x+r*0.55, y+r*0.55);
-        g.moveTo(x+r*0.55, y-r*0.55); g.lineTo(x-r*0.55, y+r*0.55);
-        g.stroke();
-      }
+      g.fillText(ch.basic.icon, x, y+1);
       if (cooling){
-        const frac = (st.cooldownUntil - now)/PU_COOLDOWN;
-        g.strokeStyle = 'rgba(240,227,192,0.85)'; g.lineWidth = 3;
-        g.beginPath(); g.arc(x, y, r-2, -Math.PI/2, -Math.PI/2 + TAU*(1-frac)); g.stroke();
+        const frac = (b.basicCdUntil - now)/ch.basic.cd;
+        g.fillStyle = 'rgba(10,7,4,0.65)';
+        g.beginPath();
+        g.moveTo(x, y);
+        g.arc(x, y, r, -Math.PI/2, -Math.PI/2 + TAU*frac);
+        g.closePath(); g.fill();
       }
       g.globalAlpha = 1;
     }
+    // ultimate: charge ring
+    {
+      const x = b.ultX, r = b.puR*1.3;
+      const charge = b.ultCharge / ULT_MAX;
+      const ready = charge >= 1;
+      g.fillStyle = 'rgba(0,0,0,0.4)';
+      g.beginPath(); g.arc(x+2, y+3, r, 0, TAU); g.fill();
+      g.fillStyle = ready ? '#4a3313' : '#2c2114';
+      g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+      if (ready){
+        g.fillStyle = `rgba(255,212,77,${0.14 + Math.sin(now*6)*0.08})`;
+        g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+        g.strokeStyle = `rgba(255,212,77,${0.5 + Math.sin(now*6)*0.3})`;
+        g.lineWidth = 2;
+        g.beginPath(); g.arc(x, y, r + 5 + Math.sin(now*6)*1.5, 0, TAU); g.stroke();
+      }
+      g.strokeStyle = 'rgba(232,196,105,0.25)'; g.lineWidth = r*0.16;
+      g.beginPath(); g.arc(x, y, r*0.88, 0, TAU); g.stroke();
+      if (charge > 0){
+        g.strokeStyle = ready ? '#ffd44d' : '#e8c469'; g.lineCap = 'round';
+        g.beginPath(); g.arc(x, y, r*0.88, -Math.PI/2, -Math.PI/2 + TAU*Math.min(1, charge));
+        g.stroke();
+      }
+      g.globalAlpha = ready ? 1 : 0.75;
+      g.font = `${Math.round(r*0.95)}px serif`;
+      g.textAlign='center'; g.textBaseline='middle';
+      g.fillText(ch.ult.icon, x, y+1);
+      g.globalAlpha = 1;
+    }
+  }
+  renderSelect(g, b, now){
+    g.font = `700 ${Math.round(Math.min(b.W*0.055, 30))}px Georgia, serif`;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.strokeStyle = 'rgba(0,0,0,0.7)'; g.lineWidth = 5;
+    g.strokeText('CHOOSE YER PIRATE', b.W/2, b.H*0.15);
+    g.fillStyle = '#e8c469';
+    g.fillText('CHOOSE YER PIRATE', b.W/2, b.H*0.15);
+    for (let i=0;i<CHARACTERS.length;i++){
+      const c = CHARACTERS[i], rc = this.cardRect(b, i);
+      const sel = b.charIdx === i;
+      const dim = b.charIdx != null && !sel;
+      g.globalAlpha = dim ? 0.45 : 1;
+      g.fillStyle = 'rgba(20,12,6,0.78)';
+      g.beginPath();
+      g.roundRect ? g.roundRect(rc.x, rc.y, rc.w, rc.h, 10) : g.rect(rc.x, rc.y, rc.w, rc.h);
+      g.fill();
+      g.strokeStyle = sel ? '#ffd44d' : 'rgba(232,196,105,0.35)';
+      g.lineWidth = sel ? 3 : 1.5;
+      g.beginPath();
+      g.roundRect ? g.roundRect(rc.x, rc.y, rc.w, rc.h, 10) : g.rect(rc.x, rc.y, rc.w, rc.h);
+      g.stroke();
+      const pr = rc.w*0.26;
+      drawPirate(g, AVATARS[c.avatar], rc.x + rc.w/2, rc.y + rc.h*0.3, pr, now,
+                 sel ? 'smile' : 'idle', now < b.blinkUntil);
+      g.textAlign='center'; g.textBaseline='middle';
+      g.font = `700 ${Math.round(rc.w*0.13)}px Georgia, serif`;
+      g.fillStyle = sel ? '#ffd44d' : '#e8c469';
+      g.fillText(c.name.toUpperCase(), rc.x + rc.w/2, rc.y + rc.h*0.6);
+      g.font = `italic ${Math.round(rc.w*0.095)}px Georgia, serif`;
+      g.fillStyle = '#c9b98d';
+      g.fillText(c.title, rc.x + rc.w/2, rc.y + rc.h*0.7);
+      g.font = `${Math.round(rc.w*0.16)}px serif`;
+      g.fillText(c.basic.icon + '  ' + c.ult.icon, rc.x + rc.w/2, rc.y + rc.h*0.85);
+      g.globalAlpha = 1;
+    }
+    g.font = `600 ${Math.round(Math.min(b.W*0.035, 17))}px Georgia, serif`;
+    g.fillStyle = '#c9b98d';
+    const msg = this.phase === 'countdown' ? 'READY! HOIST THE COLOURS…'
+      : b.charIdx == null ? 'tap a card · left icon = quick trick · right icon = ultimate'
+      : 'waiting for the enemy…';
+    g.fillText(msg, b.W/2, b.H*0.26 + this.cardRect(b,0).h + Math.min(b.H*0.07, 34));
   }
 }
 
 /* ---------------- boot ---------------- */
 const legend = document.getElementById('legend');
-legend.innerHTML = POWERUPS.map(p =>
-  `<div class="pu"><div class="ico">${p.icon}</div><div><div class="nm">${p.name}</div><div class="ds">${p.desc}</div></div></div>`
+legend.innerHTML = CHARACTERS.map(c =>
+  `<div class="pu"><div class="ico">${c.accentIcon}</div><div>
+    <div class="nm">${c.name} <span style="opacity:.75;text-transform:none">${c.title}</span></div>
+    <div class="ds">${c.basic.icon} <b>${c.basic.name}</b> (${c.basic.cd}s cooldown) — ${c.basic.desc}</div>
+    <div class="ds">${c.ult.icon} <b>${c.ult.name}</b> (ultimate) — ${c.ult.desc}</div>
+  </div></div>`
 ).join('');
 
 function drawFacesPreview(){
@@ -1434,13 +1605,13 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
   Music.start();
   FS.enter();
   document.getElementById('startOverlay').hidden = true;
-  game.start();
+  game.enterSelect();
 });
 document.getElementById('againBtn').addEventListener('click', ()=>{
   Snd.ensure();
   FS.enter();
   document.getElementById('winOverlay').hidden = true;
-  game.start();
+  game.enterSelect();
 });
 </script>
 </body>
