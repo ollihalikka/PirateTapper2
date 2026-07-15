@@ -6,42 +6,6 @@
 
 ---
 
-## MVP
-
-### Characters
-3 Characters to choose from. Each character has their own Ulti (remove current power-ups), that charges up as you progress or get streaks. 
-Maybe even two abities, one lesser one with just a cooldown, and a bigger Ulti that charges.
-
-### Play modes
-
-#### Single Player - Endless Waves
--Go for as long as you can. No opponent, just endless waves and aim for high score. -Char abilities need to be changed from multiplayer: they need to be beneficial to you, instead of harmful to opponent.
-
-#### Single Player - PVE
--Play against a ladder of CPU opponents.
--Story mode?
-
-#### Multiplayer PVP
-
-#### Multiplayer CoOp PVE 
--Is there interest for this one?
-
-## To Do
-
-### New 
--Assets for icons -Assets for characters 
--Animations for characters 
--Sounds for characters -Device vs Device
-
-### Improve 
--Make it all brighter 
--Life bar needs to be more visible, put health number inside bar 
--Less Power-ups at once, maybe one or max two. - Just tie to characters.
-
-### Figure out 
--What keeps the player playing? 
--Sense of progression? - Tie to character? XP? New abilities unlocked -Should waves be sped up in PVP, as game progresses?
-
 ## 1. Vision
 
 A two-player tap duel of **absolute chaos and mayhem**. You're trying to tap
@@ -84,7 +48,7 @@ Per wave, per player:
      next wave after 0.5 s.
 
 First player to **0 HP loses** (max HP **300**). Damage crossing between
-players is routed through a single choke point (`Game.applyDamage`) — see §9.
+players is routed through a single choke point (`Game.applyDamage`) — see §10.
 
 ### Wave schedule
 
@@ -261,7 +225,35 @@ bandana, white beard, voice set 2).
 
 ---
 
-## 9. Architecture (multiplayer-ready)
+## 9. Play modes
+
+### Shipped — Local PVP
+The MVP mode: two players, one touchscreen, boards facing each other (§2).
+
+### Planned
+
+- **Single Player — Endless Waves.** No opponent: survive an ever-escalating
+  wave schedule and chase a high score (score from waves cleared with speed
+  and perfect-clear multipliers). Character kits get **PvE variants** — with
+  no opponent to harm, each ability is re-specced to benefit the player while
+  keeping the character's identity:
+  - Redbeard: cannons blast buttons off *your* board (auto-pop the next in
+    order).
+  - Frostjaw: freezes the **fuse**, not a board — buys time.
+  - Inkeye: the curse becomes second sight — briefly reveals order hints.
+  Doubles as onboarding and solo skill training; the high-score chase is the
+  retention hook.
+- **Single Player — PVE ladder.** Climb a ladder of CPU pirates of rising
+  skill (bot = configurable tap delay + error rate — the same bot as the
+  balance sims). Optional light story wrapper: climb the fleet, dethrone the
+  Tapper King.
+- **Multiplayer — online PVP.** Device vs device; roadmap Phase 3.
+- **Multiplayer — co-op PVE.** Two pirates vs shared escalating waves
+  (shared health pool, no cross-damage). Open question whether demand
+  exists — cheap to prototype locally after Endless Waves lands; validate
+  before investing.
+
+## 10. Architecture (multiplayer-ready)
 
 The defining property of the design: **players never touch shared objects.**
 Each `Board` is an independent simulation of one half; the opponent affects
@@ -281,7 +273,7 @@ you only through explicit events.
 
 ---
 
-## 10. Balance notes & levers
+## 11. Balance notes & levers
 
 Current risks and where to tune:
 
@@ -311,7 +303,7 @@ match-length distribution and whether comebacks still happen under the storm.
 
 ---
 
-## 11. Retention, progression & economy
+## 12. Retention, progression & economy
 
 ### What keeps players coming back
 
@@ -355,7 +347,7 @@ everything).
 
 ---
 
-## 12. Roadmap
+## 13. Roadmap
 
 Phased by dependency: specs before art, online before deep progression.
 
@@ -401,7 +393,7 @@ canvas drawing, so the game never blocks on art.
 - [ ] Server profiles once online accounts exist.
 
 ### Phase 5 — Live tuning & retention systems *(ongoing once 3+4 exist)*
-- [ ] **Storm mode playtest** (see §10 open questions): time-based symmetric
+- [ ] **Storm mode playtest** (see §11 open questions): time-based symmetric
       ramp behind a config flag; measure match-length distribution, fail
       rates, comeback frequency.
 - [ ] Head-to-head records, daily first win, weekly challenge.
@@ -410,10 +402,13 @@ canvas drawing, so the game never blocks on art.
 ### Content backlog (any phase)
 - [ ] Wave schedules as data (JSON) — the original `CreateWaves` comment
       wished for this; enables modes and difficulty presets.
+- [ ] **Endless Waves** single-player mode with PvE ability variants (§9) —
+      good early: no netcode needed, doubles as onboarding + high-score hook.
+- [ ] **PVE ladder** vs CPU pirates (§9) — the bot doubles as the
+      balance-sim engine.
+- [ ] Co-op PVE prototype once Endless Waves exists (§9 — validate interest).
 - [ ] Game modes: FastClickMode (unfinished in the Unity original — no
       order, pure speed), best-of-3 rounds, sudden death.
-- [ ] Single-player practice vs. a bot (configurable delay/error rate) —
-      doubles as the balance-sim engine.
 - [ ] Juggle/freeze/ghost bespoke sound recordings (currently synth).
 - [ ] Character-select kit tooltips; pause/forfeit; mute toggle.
 
@@ -425,7 +420,7 @@ canvas drawing, so the game never blocks on art.
 
 ---
 
-## 13. Reference: current tuning constants
+## 14. Reference: current tuning constants
 
 | Constant | Value |
 |---|---|
