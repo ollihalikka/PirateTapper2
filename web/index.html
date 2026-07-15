@@ -123,7 +123,7 @@
         <div>⚓ <b>Choose yer pirate.</b> Each has a quick trick on a cooldown, and an <b>ultimate</b> charged by clearing waves — the faster and cleaner the clear, the more it charges.</div>
       </div>
       <canvas id="facesPreview"></canvas>
-      <div class="faces-caption">The eight buttons of the deep</div>
+      <div class="faces-caption">The marks of the deep</div>
       <div class="legend" id="legend"></div>
       <button class="btn" id="startBtn">Start the Showdown</button>
       <div class="hint">Best on a touchscreen laid flat between two players · mouse works for practice · sound on!</div>
@@ -192,7 +192,7 @@ const CHARACTERS = [
             desc:'Lob a cannonball at the enemy deck (6 damage).' },
     ult:  { icon:'💥', name:'Broadside',
             desc:'Rake the enemy deck with five cannonballs (8 damage each).' } },
-  { id:'frostjaw', name:'Frostjaw', title:'the Iceberg', avatar:2, accentIcon:'❄️',
+  { id:'frostjaw', name:'Whitedeath', title:'the Iceberg', avatar:2, accentIcon:'❄️',
     basic:{ icon:'❄️', name:'Cold Snap', cd:8,
             desc:'Flash-freeze the enemy board for 0.8s.' },
     ult:  { icon:'🧊', name:'Deep Freeze',
@@ -217,8 +217,9 @@ const PLAYER_NAME = ['PLAYER 1','PLAYER 2'];
      assets/characters/<charId>.png   pirate portrait (square)
      assets/characters/<charId>.json  optional sprite-sheet manifest (animation)
 
-   kindIds: skull anchor coin bottle dynamite pistol rudder balls
-   charIds: redbeard blackhat frostjaw
+   kindIds: skull anchor coin bottle barrel pistol rudder balls
+            cannon chest hook map ship skull_flag spyglass swords
+   charIds: redbeard inkeye whitedeath
    The artifact build inlines every file under assets/ (recursively) as a
    data URI, keyed by its path relative to assets/. */
 const ASSET_INLINE = null;
@@ -433,7 +434,7 @@ const BUTTON_KINDS = [
       g.textAlign='center'; g.textBaseline='middle';
       g.fillText('XXX', x, y+0.28*s);
   }},
-  { id:'dynamite', disc:'#a12318', bg:'#3d8a7c', draw(g,x,y,s){
+  { id:'barrel',   disc:'#a12318', bg:'#2f8f86', draw(g,x,y,s){
       const stick='#a12318';
       for (const [dx,dy] of [[-0.34,0.1],[0.34,0.1],[0,0.02]]){
         g.fillStyle=stick;
@@ -499,7 +500,26 @@ const BUTTON_KINDS = [
         g.beginPath(); g.arc(x+(dx-0.1)*s, y+(dy-0.11)*s, 0.08*s, 0, TAU); g.fill();
       }
   }},
+  // Icon-art kinds: their look ships as a PNG in assets/icons/<id>.png; the
+  // generic fallback below only shows if the image is missing. `bg` is the
+  // pop-particle accent, sampled from each icon.
+  { id:'cannon',    bg:'#4f9e3a', draw:genericMark },
+  { id:'chest',     bg:'#c9432f', draw:genericMark },
+  { id:'hook',      bg:'#e0b52b', draw:genericMark },
+  { id:'map',       bg:'#3f7fc0', draw:genericMark },
+  { id:'ship',      bg:'#3f8fd0', draw:genericMark },
+  { id:'skull_flag',bg:'#d24b8f', draw:genericMark },
+  { id:'spyglass',  bg:'#c05a3a', draw:genericMark },
+  { id:'swords',    bg:'#7a3fb0', draw:genericMark },
 ];
+// Fallback mark for icon-art kinds when their PNG is unavailable: a simple
+// engraved ring so the button still reads as distinct (its bg color differs).
+function genericMark(g, x, y, r){
+  g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = r*0.1;
+  g.beginPath(); g.arc(x, y, r*0.42, 0, TAU); g.stroke();
+  g.fillStyle = 'rgba(0,0,0,0.3)';
+  g.beginPath(); g.arc(x, y, r*0.16, 0, TAU); g.fill();
+}
 
 /* Every button is sawn from the same tree: a disc of the deck-plank
    texture with a carved rim. `seed` offsets the grain per button. */
@@ -526,18 +546,21 @@ function drawButtonBase(g, x, y, r, seed=0){
    kind gets its own hue — a second memory anchor besides the mark),
    then the mark itself. */
 function drawButtonFace(g, x, y, r, kind, seed=0){
+  const icon = IMG['icon:'+kind.id];
+  if (icon){
+    // The supplied icons are complete circular buttons (baked-in background),
+    // so they fill the whole face — no wooden disc or painted color beneath.
+    const s = r*2.18;
+    g.drawImage(icon, x-s/2, y-s/2, s, s);
+    return;
+  }
+  // Procedural fallback: wooden disc + the kind's painted color + its mark.
   drawButtonBase(g, x, y, r, seed);
   g.fillStyle = kind.bg;
   g.beginPath(); g.arc(x, y, r*0.8, 0, TAU); g.fill();
-  g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = r*0.05;    // paint edge shadow
+  g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = r*0.05;
   g.beginPath(); g.arc(x, y, r*0.77, 0, TAU); g.stroke();
-  const icon = IMG['icon:'+kind.id];                          // art override
-  if (icon){
-    const s = r*1.5;                                           // mark fills ~75% of the disc
-    g.drawImage(icon, x-s/2, y-s/2, s, s);
-  } else {
-    kind.draw(g, x, y, r);                                     // procedural fallback
-  }
+  kind.draw(g, x, y, r);
 }
 
 function shuffled(arr){
@@ -557,9 +580,9 @@ function shuffled(arr){
 const AVATARS = [
   { id:'redbeard', voice:'p1', skin:'#e2a878', beard:'#8a3f1a', brow:'#5c2d14',
     hat:'bandana', hatColor:'#b93d32', hatDot:'#f0e3c0', eyepatch:false, earring:true },
-  { id:'blackhat', voice:'p2', skin:'#c98e5f', beard:'#332a21', brow:'#1c1610',
+  { id:'inkeye', voice:'p2', skin:'#c98e5f', beard:'#332a21', brow:'#1c1610',
     hat:'tricorn', hatColor:'#26262e', hatTrim:'#9a6ec9', eyepatch:true, earring:false },
-  { id:'frostjaw', voice:'p2', skin:'#cfa27e', beard:'#d8dde2', brow:'#b8c4cc',
+  { id:'whitedeath', voice:'p2', skin:'#cfa27e', beard:'#d8dde2', brow:'#b8c4cc',
     hat:'bandana', hatColor:'#5f9cbf', hatDot:'#eef6fa', eyepatch:false, earring:false },
 ];
 
@@ -784,7 +807,7 @@ class Board {
       let x=0, y=0, ok=false;
       for (let t=0; t<300 && !ok; t++){
         x = rand(a.x0, a.x1); y = rand(a.y0, a.y1);
-        ok = out.every(p => Math.hypot(p.x-x, p.y-y) > this.R*2.35);
+        ok = out.every(p => Math.hypot(p.x-x, p.y-y) > this.R*2.55);
       }
       out.push({x, y});
     }
@@ -1606,11 +1629,12 @@ legend.innerHTML = CHARACTERS.map(c =>
 
 function drawFacesPreview(){
   const cv = document.getElementById('facesPreview');
-  const n = BUTTON_KINDS.length, cell = 52, pad = 6;
-  cv.width = n*cell; cv.height = cell + pad;
+  const n = BUTTON_KINDS.length, cell = 52, pad = 8;
+  const cols = Math.min(n, 8), rows = Math.ceil(n/cols);   // wrap wide rosters
+  cv.width = cols*cell; cv.height = rows*(cell) + pad;
   const g = cv.getContext('2d');
   BUTTON_KINDS.forEach((k, i)=>{
-    const x = i*cell + cell/2, y = (cell+pad)/2, r = cell*0.44;
+    const x = (i%cols)*cell + cell/2, y = Math.floor(i/cols)*cell + cell/2, r = cell*0.44;
     drawButtonFace(g, x, y, r, k, i*7);
   });
 }

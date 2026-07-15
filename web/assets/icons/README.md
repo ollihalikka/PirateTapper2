@@ -1,18 +1,26 @@
 # Button icon overrides
 
-Drop a transparent PNG here named `<kindId>.png` to replace a button's drawn
-mark with your own art. Missing files fall back to the built-in drawing, so
-you can add these one at a time.
+Drop a PNG here named `<kindId>.png` to give a button its face. If the file
+exists it is drawn as the **entire button** (full circle); if it's missing,
+the game falls back to a procedural wooden disc with a painted mark, so you
+can add icons one at a time.
 
-Kind IDs (one button each): `skull`, `anchor`, `coin`, `bottle`, `dynamite`,
-`pistol`, `rudder`, `balls`.
+The shipped set (16 icons) are complete circular buttons — a bold mark on its
+own colored disc. Match that style for consistency.
 
-- **Format:** PNG with transparency, square, ~256×256 px.
-- **Safe area:** artwork is drawn at ~75% of the button diameter, centered.
-  Keep the mark inside the middle ~75% of the canvas; leave the edges clear.
-- **Background:** don't paint one — each button keeps its signature face color
-  behind your transparent mark (the color is a memory cue). Design the mark to
-  read on that color (see the table in `docs/ASSET_SPECS.md`).
+Kind IDs currently in the button pool:
+`skull`, `anchor`, `coin`, `bottle`, `barrel`, `pistol`, `rudder`, `balls`,
+`cannon`, `chest`, `hook`, `map`, `ship`, `skull_flag`, `spyglass`, `swords`.
 
-Example: `web/assets/icons/skull.png` replaces the skull mark everywhere it
-appears (buttons and the start-screen preview row).
+- **Format:** PNG, square, ~256×256 px.
+- **Full-face:** the image fills the whole button (drawn at ~108% of the
+  button diameter so its circular art meets the edge). Put the button's
+  **background color inside the PNG** — a bold, distinct hue per button, since
+  color is a memory cue alongside the mark.
+- **Safe area:** keep the important art within a centered circle; the very
+  corners sit just outside the button and won't show.
+- **Distinctness:** each button should be instantly tellable from the others
+  by mark *and* color — that's what players memorize.
+
+To change which marks are in play, edit `BUTTON_KINDS` in `web/index.html`
+(add/remove `{ id, bg }` entries; `bg` is just the pop-particle color).

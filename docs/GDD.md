@@ -70,28 +70,22 @@ endless overtime so matches always terminate.
 
 ## 3. Buttons
 
-Eight button identities — the same set as the Unity `Poppable_Buttons`
-prefabs. **No numbers, no hints**: identity is the memory hook. Each button
-carries **two redundant anchors** (helps memory and doubles as colorblind
-support): a large painted mark and a unique face color.
+A pool of **16 button identities** (rooted in the Unity `Poppable_Buttons`
+set, expanded with more pirate icons): skull, anchor, coin, rum bottle,
+gunpowder barrel, pistol, rudder, cannonballs, cannon, treasure chest, hook,
+map, ship, skull flag, spyglass, and crossed swords. **No numbers, no hints**:
+identity is the memory hook. Each button carries **two redundant anchors**
+(helps memory, doubles as colorblind support): a distinct **mark** and a
+distinct **face color**.
 
-| Button | Mark color | Face color |
-|---|---|---|
-| Skull | bone white | navy |
-| Anchor | dark teal | sand |
-| Coin (doubloon) | gold | royal purple |
-| Rum bottle (XXX) | green glass | amber |
-| Dynamite | red | sea teal |
-| Flintlock pistol | black iron | dusty rose |
-| Ship's rudder | dark walnut | steel blue |
-| Cannonballs | black | olive |
+Visual construction: each button ships as a circular icon PNG
+(`assets/icons/<id>.png`, full-face with its own colored background — see
+`docs/ASSET_SPECS.md`). If an icon is missing, the engine falls back to a
+procedural wooden disc with a painted mark and per-kind face color.
 
-Visual construction: every button is a disc of the deck-plank texture
-("sawn from the same tree", per-button grain offset) with a carved rim, the
-painted face color, and the mark filling ~85 % of the face.
-
-Each wave deals a random subset (Fisher–Yates shuffle) of the eight kinds, so
-"the rum bottle came third" is a fresh fact every wave.
+Each wave deals a random subset (Fisher–Yates shuffle) of the pool — with 16
+kinds and only 2–6 per wave, repetition across waves is rare, so "the rum
+bottle came third" is a fresh fact every wave.
 
 Placement: random inside the play area, minimum spacing 2.35 × button radius,
 up to 300 retries per button (mirrors the original's 500-retry loop).
@@ -114,7 +108,7 @@ A character = **look + voice set + two abilities**:
 | Character | Fantasy | Basic (8 s CD) | Ultimate |
 |---|---|---|---|
 | **Redbeard** *the Cannoneer* | reliable aggression | 💣 **Pot Shot** — 1 cannonball, 6 dmg | 💥 **Broadside** — 5 cannonballs, 8 dmg each (40 total) over ~1.9 s |
-| **Frostjaw** *the Iceberg* | tempo control | ❄️ **Cold Snap** — freeze enemy board 0.8 s | 🧊 **Deep Freeze** — freeze 2.6 s; enemy wave fuse keeps burning (threatens the −30 auto-clear) |
+| **Whitedeath** *the Iceberg* | tempo control | ❄️ **Cold Snap** — freeze enemy board 0.8 s | 🧊 **Deep Freeze** — freeze 2.6 s; enemy wave fuse keeps burning (threatens the −30 auto-clear) |
 | **Inkeye** *the Cursed* | memory attack | 🦑 **Ink Spit** — 1 ink blob hides part of the board 2.5 s | 👻 **Kraken's Curse** — 4 s: all faces wiped to identical grey + positions juggled + 2 ink blobs |
 
 Ability rules:
@@ -183,10 +177,11 @@ Reactions (synced with the original game's recorded voice grunts):
 | Cast ability / wave clear | grin | — / smile |
 | Match end | winner grins, loser fumes (permanent) | smile / angry |
 
-Plus idle bobbing and randomized blinks. Current looks: Redbeard (red
-polka-dot bandana, gold earring, auburn beard, voice set 1), Inkeye (gold- and
-purple-trimmed tricorn, eyepatch, dark beard, voice set 2), Frostjaw (ice-blue
-bandana, white beard, voice set 2).
+Plus idle bobbing and randomized blinks. The three characters now use painted
+portrait art (`assets/characters/<id>.png`: `redbeard`, `inkeye`,
+`whitedeath`), which replaces the procedural face; the canvas-drawn pirate
+remains the fallback and still animates per mood. Voice sets: Redbeard = p1,
+Inkeye & Whitedeath = p2 (adding a third voice set is a `VOICES` entry + files).
 
 ---
 
@@ -239,7 +234,7 @@ The MVP mode: two players, one touchscreen, boards facing each other (§2).
   keeping the character's identity:
   - Redbeard: cannons blast buttons off *your* board (auto-pop the next in
     order).
-  - Frostjaw: freezes the **fuse**, not a board — buys time.
+  - Whitedeath: freezes the **fuse**, not a board — buys time.
   - Inkeye: the curse becomes second sight — briefly reveals order hints.
   Doubles as onboarding and solo skill training; the high-score chase is the
   retention hook.

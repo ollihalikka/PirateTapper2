@@ -44,6 +44,6 @@ Only `idle` is required; any missing mood falls back to `idle`.
 
 ## Character IDs
 
-`redbeard` (P1 default), `blackhat` (Inkeye), `frostjaw`. Add a new pirate by
-adding an entry to `AVATARS`/`CHARACTERS` in `web/index.html`, then dropping
-`<newId>.png` here.
+`redbeard`, `inkeye`, `whitedeath` — these match the avatar `id`s in
+`AVATARS` in `web/index.html`. Add a new pirate by adding an entry to
+`AVATARS`/`CHARACTERS`, then dropping `<newId>.png` here.

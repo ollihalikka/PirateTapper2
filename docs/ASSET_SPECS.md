@@ -30,11 +30,13 @@ from disk) — use a server or the artifact for those.
 
 ## 1. IDs you can target
 
-**Button kinds** (8, one mark each):
-`skull` · `anchor` · `coin` · `bottle` · `dynamite` · `pistol` · `rudder` · `balls`
+**Button kinds** (16 in the pool, one icon each):
+`skull` · `anchor` · `coin` · `bottle` · `barrel` · `pistol` · `rudder` ·
+`balls` · `cannon` · `chest` · `hook` · `map` · `ship` · `skull_flag` ·
+`spyglass` · `swords`
 
-**Characters / avatars** (3):
-`redbeard` · `blackhat` (Inkeye's look) · `frostjaw`
+**Characters / avatars** (3): `redbeard` · `inkeye` · `whitedeath`
+(the avatar `id`s in `AVATARS`).
 
 **Voices** (2 sets today): `p1` · `p2` — declared in `VOICES` in `index.html`.
 
@@ -48,29 +50,25 @@ To add a *new* character or voice, add one entry to `CHARACTERS` / `AVATARS` /
 
 `web/assets/icons/<kindId>.png`
 
-- **Format:** PNG **with transparency**, square, **256×256 px**.
-- **Safe area:** the icon is drawn at **75% of the button diameter**, centered.
-  Keep the artwork within the central ~75% of the canvas; leave the outer ring
-  clear so the wooden button rim shows.
-- **No background:** each button keeps its **signature face color** behind your
-  transparent mark — that color is a second memory cue, so don't cover it.
-  Design the mark to contrast with its color:
+If the file exists it becomes the **whole button face**; if not, the game
+draws a procedural wooden disc with a painted mark as fallback.
 
-  | Kind | Face color behind the mark | Suggested mark color |
-  |---|---|---|
-  | skull | navy | bone white |
-  | anchor | sand | dark teal |
-  | coin | royal purple | gold |
-  | bottle | amber | green glass |
-  | dynamite | sea teal | red |
-  | pistol | dusty rose | black iron |
-  | rudder | steel blue | dark walnut |
-  | balls | olive | black |
+- **Format:** PNG, square, **256×256 px**.
+- **Full-face, own background:** the image fills the entire button (drawn at
+  ~108% of the button diameter so its circular art meets the edge). **Bake a
+  bold background color into the PNG** — a distinct hue per button. Color is a
+  memory cue *alongside* the mark, so make each one clearly different in both.
+- **Safe area:** keep the important art inside a centered circle; the extreme
+  corners fall just outside the button.
+- **Style:** the shipped set is a bold mark on a solid colored disc with a
+  soft rim/shadow — match it for a coherent look. Flat, high-contrast art
+  reads best at ~40–50 px on screen; fine detail disappears.
 
-- **Style:** flat, bold, high-contrast silhouettes read best at ~40 px on
-  screen. Fine detail disappears.
+Icons also appear in the start-screen preview grid automatically.
 
-Icons also appear in the start-screen preview row automatically.
+> The 16 shipped icons live in `web/assets/icons/`. To change which are in
+> play, edit the `BUTTON_KINDS` list in `web/index.html`
+> (each is `{ id, bg }`; `bg` is only the pop-particle color).
 
 ---
 
