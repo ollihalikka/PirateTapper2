@@ -134,9 +134,7 @@
 
   <div class="overlay" id="winOverlay" hidden>
     <div class="panel">
-      <div class="flag">🏴‍☠️</div>
       <div class="eyebrow">The powder settles…</div>
-      <div id="winTaunt"></div>
       <button class="btn" id="againBtn">Run It Back</button>
     </div>
   </div>
@@ -190,21 +188,27 @@ const CHARACTERS = [
   { id:'redbeard', name:'Redbeard', title:'the Cannoneer', avatar:0, accentIcon:'💣',
     theme:{ glow:'#ff7a30', particle:'ember', deck:null },   // the default ship
     basic:{ icon:'💣', img:'icons/balls.png', name:'Pot Shot', cd:8,
-            desc:'Lob a cannonball at the enemy deck (6 damage).' },
+            desc:'Lob a cannonball at the enemy deck (6 damage).',
+            flavor:'A quick cannonball lobbed across the water to rattle their deck.' },
     ult:  { icon:'💥', img:'icons/cannon.png', name:'Broadside',
-            desc:'Rake the enemy deck with five cannonballs (8 damage each).' } },
+            desc:'Rake the enemy deck with five cannonballs (8 damage each).',
+            flavor:'Every gun on the ship roars at once in a thunderous barrage.' } },
   { id:'frostjaw', name:'White Death', title:'the Iceberg', avatar:2, accentIcon:'❄️',
     theme:{ glow:'#a8dcff', particle:'flake', deck:'snow' }, // frost-bitten deck
     basic:{ icon:'❄️', img:'icons/abilities/white_death-basic.png', name:'Cold Snap', cd:8,
-            desc:'Flash-freeze the enemy board for 0.8s.' },
+            desc:'Flash-freeze the enemy board for 0.8s.',
+            flavor:'A biting gust of frost that stiffens their fingers for a beat.' },
     ult:  { icon:'🧊', img:'icons/abilities/white_death-ulti.png', name:'Deep Freeze',
-            desc:'Freeze the enemy board solid for 2.6s — their wave timer keeps burning.' } },
+            desc:'Freeze the enemy board solid for 2.6s — their wave timer keeps burning.',
+            flavor:'Locks their whole deck in ice while the clock keeps ticking.' } },
   { id:'inkeye', name:'Inkeye', title:'the Cursed', avatar:1, accentIcon:'🦑',
     theme:{ glow:'#9a6ec9', particle:'wisp', deck:'dark' },  // worn, cursed wood
     basic:{ icon:'🦑', img:'icons/abilities/inkey-basic.png', name:'Ink Spit', cd:8,
-            desc:'Splat one ink blob over the enemy board for 2.5s.' },
+            desc:'Splat one ink blob over the enemy board for 2.5s.',
+            flavor:'Spits a gob of cursed ink to blot out part of their board.' },
     ult:  { icon:'👻', img:'icons/abilities/inkeye-ulti.png', name:'Kraken’s Curse',
-            desc:'4 seconds of chaos: faces wiped, buttons juggled, ink everywhere.' } },
+            desc:'4 seconds of chaos: faces wiped, buttons juggled, ink everywhere.',
+            flavor:'Calls up the kraken — a storm of ink, chaos and vanished faces.' } },
 ];
 
 const PLAYER_ACCENT = ['#39b795','#e0483f'];
@@ -623,6 +627,21 @@ function drawAbilityIcon(g, ab, x, y, r){
   }
 }
 
+/* Greedy word-wrap for canvas text: returns the lines that fit in maxW
+   with the font currently set on g. */
+function wrapText(g, text, maxW){
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words){
+    const t = cur ? cur + ' ' + w : w;
+    if (cur && g.measureText(t).width > maxW){ lines.push(cur); cur = w; }
+    else cur = t;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
 function shuffled(arr){
   const a = arr.slice();
   for (let i=a.length-1; i>0; i--){
@@ -812,6 +831,7 @@ class Board {
     this.blinkUntil = 0;
     this.nextBlink = 0;
     this.charIdx = null;      // set during the select phase
+    this.ready = false;       // locked in via the Ready button
     this.selectSoundDone = false;   // select voice line has finished playing
     this.character = null;
     this.theme = null;        // character deck theme (glow + ambient particles)
@@ -1260,12 +1280,26 @@ class Game {
   cardRect(b, i){
     const gap = Math.min(b.W*0.035, 16);
     const w = Math.min((b.W - gap*2 - 28)/3, 170);
-    const h = Math.min(b.H*0.56, w*1.5);
+    const h = Math.min(b.H*0.40, w*1.35);
     const total = w*3 + gap*2;
-    return { x: b.W/2 - total/2 + i*(w+gap), y: b.H*0.26, w, h };
+    return { x: b.W/2 - total/2 + i*(w+gap), y: b.H*0.16, w, h };
+  }
+  /* the Ready button that locks in a pick and moves toward the VS screen */
+  readyRect(b){
+    const w = Math.min(b.W*0.52, 230), h = Math.min(b.H*0.085, 44);
+    return { x: b.W/2 - w/2, y: b.H*0.90 - h/2, w, h };
   }
   trySelect(boardIdx, lx, ly, now){
     const b = this.boards[boardIdx];
+    // Ready button first (only once a pirate is chosen and not yet locked in)
+    if (b.charIdx != null && !b.ready){
+      const rr = this.readyRect(b);
+      if (lx >= rr.x && lx <= rr.x+rr.w && ly >= rr.y && ly <= rr.y+rr.h){
+        this.setReady(boardIdx, now);
+        return;
+      }
+    }
+    if (b.ready) return;                    // locked in: ignore further taps
     for (let i=0;i<CHARACTERS.length;i++){
       const r = this.cardRect(b, i);
       if (lx >= r.x && lx <= r.x+r.w && ly >= r.y && ly <= r.y+r.h){
@@ -1274,31 +1308,41 @@ class Game {
       }
     }
   }
+  /* Pick or switch a pirate (freely, until Ready is pressed). Shows the
+     character's ability flavor; does not advance the screen on its own. */
   selectChar(boardIdx, ci, now){
     if (this.phase !== 'select') return;
     const b = this.boards[boardIdx];
-    if (b.charIdx != null) return;         // selection locks in once made
+    if (b.ready) return;                    // can't change once ready
     b.charIdx = ci;
     b.character = CHARACTERS[ci];
     b.avatar = AVATARS[CHARACTERS[ci].avatar];
     b.voice = b.avatar.voice;
     b.theme = CHARACTERS[ci].theme;
     b.planks = makePlanks(b.W, b.H, b.theme.glow, b.theme.deck);  // the character claims the ship
-    b.setMood('smile', 1.4, now);
+    b.setMood('smile', 1.2, now);
     play('click', 0.7);
-    // hold on the select screen until this pirate has finished calling out
+  }
+  /* Lock the pick in. The pirate calls out; once BOTH players are ready and
+     both cries have played, the VS splash begins. */
+  setReady(boardIdx, now){
+    const b = this.boards[boardIdx];
+    if (this.phase !== 'select' || b.charIdx == null || b.ready) return;
+    b.ready = true;
     b.selectSoundDone = false;
+    play('cast', 0.85);
+    b.setMood('smile', 1.6, now);
     playCharSound(b.avatar, 'select', 0.95, ()=>{
       b.selectSoundDone = true;
       this.maybeStartCountdown(performance.now()/1000);
     });
     this.maybeStartCountdown(now);
   }
-  /* Advance to the VS splash only once BOTH players have chosen AND both
+  /* Advance to the VS splash only once BOTH players have readied up AND both
      select voice lines have played out (so the cries never overlap). */
   maybeStartCountdown(now){
     if (this.phase !== 'select') return;
-    if (!this.boards.every(x => x.charIdx != null && x.selectSoundDone)) return;
+    if (!this.boards.every(x => x.ready && x.selectSoundDone)) return;
     this.phase = 'countdown';
     this.vsStartAt = now;
     this.vsTaps = [0, 0];
@@ -1434,16 +1478,7 @@ class Game {
     playCharSound(loseB.avatar, 'defeat', 0.95, ()=>{
       playCharSound(winB.avatar, 'victory', 1, ()=>{ Snd.fanfare(); });
     });
-    const taunts = [
-      'The loser walks the plank. Slowly. For dramatic effect.',
-      'Faster fingers, fuller treasure chest.',
-      'The sea remembers the slow ones.',
-      'All that gunpowder, and still not quick enough.',
-      'Send word to port: a new tapping legend sails tonight.',
-    ];
     setTimeout(()=>{
-      document.getElementById('winTaunt').textContent =
-        '“' + taunts[Math.floor(Math.random()*taunts.length)] + '”';
       document.getElementById('winOverlay').hidden = false;
     }, 3000);
   }
@@ -1951,7 +1986,8 @@ class Game {
         g.fillStyle = 'rgba(10,7,4,0.65)';
         g.beginPath();
         g.moveTo(x, y);
-        g.arc(x, y, r, -Math.PI/2, -Math.PI/2 + TAU*frac);
+        // deplete clockwise: the trailing edge sweeps back to the top clockwise
+        g.arc(x, y, r, -Math.PI/2, -Math.PI/2 - TAU*frac, true);
         g.closePath(); g.fill();
       }
       g.globalAlpha = 1;
@@ -2102,17 +2138,19 @@ class Game {
     }
   }
   renderSelect(g, b, now){
-    g.font = `700 ${Math.round(Math.min(b.W*0.055, 30))}px Georgia, serif`;
+    g.font = `700 ${Math.round(Math.min(b.W*0.05, 28))}px Georgia, serif`;
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.strokeStyle = 'rgba(0,0,0,0.7)'; g.lineWidth = 5;
-    g.strokeText('CHOOSE YER PIRATE', b.W/2, b.H*0.15);
+    g.strokeText('CHOOSE YER PIRATE', b.W/2, b.H*0.08);
     g.fillStyle = '#e8c469';
-    g.fillText('CHOOSE YER PIRATE', b.W/2, b.H*0.15);
+    g.fillText('CHOOSE YER PIRATE', b.W/2, b.H*0.08);
+    let cardsBottom = b.H*0.15;
     for (let i=0;i<CHARACTERS.length;i++){
       const c = CHARACTERS[i], rc = this.cardRect(b, i);
+      cardsBottom = rc.y + rc.h;
       const sel = b.charIdx === i;
       const dim = b.charIdx != null && !sel;
-      g.globalAlpha = dim ? 0.45 : 1;
+      g.globalAlpha = dim ? 0.4 : 1;
       g.fillStyle = 'rgba(20,12,6,0.78)';
       g.beginPath();
       g.roundRect ? g.roundRect(rc.x, rc.y, rc.w, rc.h, 10) : g.rect(rc.x, rc.y, rc.w, rc.h);
@@ -2123,15 +2161,15 @@ class Game {
       g.roundRect ? g.roundRect(rc.x, rc.y, rc.w, rc.h, 10) : g.rect(rc.x, rc.y, rc.w, rc.h);
       g.stroke();
       const pr = rc.w*0.26;
-      drawPirate(g, AVATARS[c.avatar], rc.x + rc.w/2, rc.y + rc.h*0.3, pr, now,
+      drawPirate(g, AVATARS[c.avatar], rc.x + rc.w/2, rc.y + rc.h*0.32, pr, now,
                  sel ? 'smile' : 'idle', now < b.blinkUntil);
       g.textAlign='center'; g.textBaseline='middle';
       // stack name / title / icons by font size so they never collide
-      const nameFs = Math.round(Math.min(rc.w*0.115, rc.h*0.085));
+      const nameFs = Math.round(Math.min(rc.w*0.115, rc.h*0.1));
       const titleFs = Math.round(nameFs*0.72);
-      const nameY = rc.y + rc.h*0.56 + pr*0.2;
-      const titleY = nameY + nameFs*0.75 + titleFs*0.62;
-      const iconsY = titleY + titleFs*0.9 + rc.w*0.12;
+      const nameY = rc.y + rc.h*0.66;
+      const titleY = nameY + nameFs*0.68 + titleFs*0.6;
+      const iconsY = titleY + titleFs*0.7 + rc.w*0.12;
       g.font = `700 ${nameFs}px Georgia, serif`;
       g.fillStyle = sel ? '#ffd44d' : '#e8c469';
       g.fillText(c.name.toUpperCase(), rc.x + rc.w/2, nameY);
@@ -2142,12 +2180,62 @@ class Game {
       drawAbilityIcon(g, c.ult, rc.x + rc.w/2 + rc.w*0.14, iconsY, rc.w*0.1);
       g.globalAlpha = 1;
     }
-    g.font = `600 ${Math.round(Math.min(b.W*0.035, 17))}px Georgia, serif`;
-    g.fillStyle = '#c9b98d';
-    const msg = this.phase === 'countdown' ? 'READY! HOIST THE COLOURS…'
-      : b.charIdx == null ? 'tap a card · left icon = quick trick · right icon = ultimate'
-      : 'waiting for the enemy…';
-    g.fillText(msg, b.W/2, b.H*0.26 + this.cardRect(b,0).h + Math.min(b.H*0.07, 34));
+    const rr = this.readyRect(b);
+    // ability flavor summary for the chosen pirate
+    if (b.charIdx != null){
+      const c = CHARACTERS[b.charIdx];
+      const panelW = Math.min(b.W*0.88, 470);
+      const px = b.W/2 - panelW/2;
+      const labelFs = Math.round(Math.min(b.W*0.033, 14));
+      const bodyFs  = Math.round(Math.min(b.W*0.03, 13));
+      const lineH = bodyFs*1.2;
+      g.textAlign = 'left'; g.textBaseline = 'top';
+      let fy = cardsBottom + Math.min(b.H*0.03, 14);
+      for (const [tag, ab, col] of [['BASIC', c.basic, '#e8c469'], ['ULTIMATE', c.ult, '#ffd44d']]){
+        const ir = labelFs*0.72, tx = px + ir*2 + 8;
+        drawAbilityIcon(g, ab, px + ir, fy + labelFs*0.5, ir);
+        g.font = `700 ${labelFs}px Georgia, serif`;
+        g.fillStyle = col;
+        g.fillText(tag + ' · ' + ab.name, tx, fy);
+        fy += labelFs*1.12;
+        g.font = `${bodyFs}px -apple-system, "Segoe UI", sans-serif`;
+        g.fillStyle = '#c9b98d';
+        for (const ln of wrapText(g, ab.flavor, panelW - (ir*2 + 8))){
+          g.fillText(ln, tx, fy); fy += lineH;
+        }
+        fy += bodyFs*0.5;
+      }
+    }
+    // Ready button / status
+    g.textAlign='center'; g.textBaseline='middle';
+    if (b.charIdx == null){
+      g.font = `600 ${Math.round(Math.min(b.W*0.036, 16))}px Georgia, serif`;
+      g.fillStyle = '#c9b98d';
+      g.fillText('Tap a pirate to see their tricks', b.W/2, rr.y + rr.h/2);
+    } else if (b.ready){
+      g.font = `700 ${Math.round(Math.min(b.W*0.05, 24))}px Georgia, serif`;
+      g.fillStyle = '#8ae09a';
+      g.fillText('✓ READY', b.W/2, rr.y + rr.h*0.4);
+      g.font = `italic ${Math.round(Math.min(b.W*0.032, 15))}px Georgia, serif`;
+      g.fillStyle = '#c9b98d';
+      g.fillText('waiting for the enemy…', b.W/2, rr.y + rr.h*1.05);
+    } else {
+      const pulse = 0.5 + Math.sin(now*5)*0.5;
+      g.fillStyle = '#d8ad4e';
+      g.beginPath();
+      g.roundRect ? g.roundRect(rr.x, rr.y, rr.w, rr.h, 8) : g.rect(rr.x, rr.y, rr.w, rr.h);
+      g.fill();
+      g.strokeStyle = `rgba(255,244,205,${0.35 + pulse*0.45})`; g.lineWidth = 2.5;
+      g.beginPath();
+      g.roundRect ? g.roundRect(rr.x, rr.y, rr.w, rr.h, 8) : g.rect(rr.x, rr.y, rr.w, rr.h);
+      g.stroke();
+      g.font = `700 ${Math.round(Math.min(rr.h*0.5, 22))}px Georgia, serif`;
+      g.fillStyle = '#241708';
+      g.fillText('READY', b.W/2, rr.y + rr.h/2);
+      g.font = `${Math.round(Math.min(b.W*0.028, 13))}px Georgia, serif`;
+      g.fillStyle = 'rgba(201,185,141,0.9)';
+      g.fillText('tap another pirate to switch', b.W/2, rr.y + rr.h + Math.min(b.H*0.028, 13));
+    }
   }
 }
 
