@@ -215,7 +215,11 @@ Inkeye & White Death = p2 (adding a third voice set is a `VOICES` entry + files)
 - **Knockout ending:** on death the match cuts to a VS-style tableau — the
   loser's portrait takes an explosion to the face and tumbles off their side
   of the screen, then "<CHARACTER> WINS!" is declared with victory sparks
-  and the winner's portrait strides to the center of each play area. The
+  and the winner's portrait strides to the center of each play area. Each
+  board also shows a per-viewer verdict — green VICTORY! on the winner's
+  half, red DEFEAT on the loser's — and the winner's portrait is ringed in
+  their player color, so even a mirror match (both players on the same
+  character) is unambiguous. The
   rematch menu is a light translucent layer (quote + Run It Back only —
   the on-canvas declarations carry the winner's name, shown once per
   board). The winner is always named by character, not player number.

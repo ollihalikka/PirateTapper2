@@ -1954,6 +1954,12 @@ class Game {
     const se = slide*slide*(3 - 2*slide);            // smoothstep
     const wx = winX + (W/2 - winX)*se;
     drawPirate(g, winB.avatar, wx, cy, r*wob, now, 'smile', now < b.blinkUntil);
+    // ring the winner in their player color — the tiebreaker in mirror matches
+    g.strokeStyle = PLAYER_ACCENT[this.winner];
+    g.lineWidth = 5;
+    g.globalAlpha = 0.85 + (REDUCED_MOTION ? 0 : Math.sin(now*4)*0.15);
+    g.beginPath(); g.arc(wx, cy, r*wob + 7, 0, TAU); g.stroke();
+    g.globalAlpha = 1;
     // the blast
     if (tt >= 0.5 && tt <= 1.0) drawBoom(g, loseX, cy, r*0.85, (tt-0.5)/0.5);
     if (!this.overBoomed && tt >= 0.5){ this.overBoomed = true; play('boom', 1); }
@@ -1962,6 +1968,14 @@ class Game {
     if (dt > 0){
       g.globalAlpha = dt;
       g.textAlign = 'center'; g.textBaseline = 'middle';
+      // per-viewer verdict: unmistakable even when both picked the same pirate
+      const vfs = Math.min(W*0.12, 48)*(0.85 + dt*0.15);
+      g.font = `900 ${Math.round(vfs)}px Georgia, serif`;
+      g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 7;
+      const verdict = iWon ? 'VICTORY!' : 'DEFEAT';
+      g.strokeText(verdict, W/2, H*0.12);
+      g.fillStyle = iWon ? '#8ae09a' : '#ff6a5a';
+      g.fillText(verdict, W/2, H*0.12);
       const size = Math.min(W*0.1, 42)*(0.8 + dt*0.2);
       g.font = `900 ${Math.round(size)}px Georgia, serif`;
       g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 6;
