@@ -1985,27 +1985,30 @@ class Game {
     const winX = iWon ? W*0.26 : W*0.74;
     const loseX = iWon ? W*0.74 : W*0.26;
     const winB = this.boards[this.winner], loseB = this.boards[1-this.winner];
-    // loser: takes the hit at 0.5s, then tumbles off their side of the screen
-    const fly = clamp((tt - 0.62)/1.0, 0, 1);
+    // loser: takes the hit at 0.5s and is BLASTED off — it's an explosion
+    const fly = clamp((tt - 0.55)/0.45, 0, 1);
     if (fly < 1){
       const dir = loseX < W/2 ? -1 : 1;
       const lx = loseX + dir*fly*fly*(W*0.85 + r*2);
       const ly = cy - Math.sin(fly*Math.PI*0.6)*H*0.1;
-      const shake = (tt > 0.5 && tt < 0.75 && !REDUCED_MOTION) ? rand(-3,3) : 0;
+      const shake = (tt > 0.48 && tt < 0.62 && !REDUCED_MOTION) ? rand(-3,3) : 0;
       g.save();
       g.translate(lx + shake, ly + shake);
-      g.rotate(REDUCED_MOTION ? 0 : dir*fly*5);
+      g.rotate(REDUCED_MOTION ? 0 : dir*fly*7);
       drawPirate(g, loseB.avatar, 0, 0, r, now, fly > 0 ? 'shock' : 'angry', false);
       g.restore();
     }
-    // winner: stands tall, grinning
+    // winner: stands tall, grinning, then strides to the center of the deck
     const wob = 1 + (REDUCED_MOTION ? 0 : Math.sin(now*3)*0.03);
-    drawPirate(g, winB.avatar, winX, cy, r*wob, now, 'smile', now < b.blinkUntil);
+    const slide = clamp((tt - 1.8)/0.45, 0, 1);
+    const se = slide*slide*(3 - 2*slide);            // smoothstep
+    const wx = winX + (W/2 - winX)*se;
+    drawPirate(g, winB.avatar, wx, cy, r*wob, now, 'smile', now < b.blinkUntil);
     // the blast
     if (tt >= 0.5 && tt <= 1.0) drawBoom(g, loseX, cy, r*0.85, (tt-0.5)/0.5);
     if (!this.overBoomed && tt >= 0.5){ this.overBoomed = true; play('boom', 1); }
     // declaration
-    const dt = clamp((tt - 1.4)/0.35, 0, 1);
+    const dt = clamp((tt - 1.15)/0.35, 0, 1);
     if (dt > 0){
       g.globalAlpha = dt;
       g.textAlign = 'center'; g.textBaseline = 'middle';
