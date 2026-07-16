@@ -195,10 +195,20 @@ Inkeye & White Death = p2 (adding a third voice set is a `VOICES` entry + files)
   Unity project's `PlanksDiffuse` texture), parchment-gold serif display
   type. Bright enough to read in daylight; a light dusk tint keeps the mood.
 - **Character theming:** picking a pirate reskins your ship — the deck's
-  lantern glow and hull trim take the character's color, and ambient
-  particles drift over the deck (Redbeard: rising embers · White Death:
-  falling snow · Inkeye: pulsing ink wisps). Theme = `{glow, particle}` on
-  the character, so new characters/ships slot in as data.
+  lantern glow and hull trim take the character's color, ambient particles
+  drift over the deck (Redbeard: rising embers · White Death: falling snow ·
+  Inkeye: pulsing ink wisps), and the deck itself gets a character style:
+  Redbeard sails the default ship, White Death a frost-bitten deck with
+  snow drifts, Inkeye worn cursed-dark wood with grain scars. Theme =
+  `{glow, particle, deck}` on the character, so new ships slot in as data.
+- **Explosions** are comic-book fireballs — smoke halo, orange body, hot
+  core, radiating spikes — that expand and fade in ~0.35 s, with bigger,
+  faster spark bursts on every hit.
+- **Knockout ending:** on death the match cuts to a VS-style tableau — the
+  loser's portrait takes an explosion to the face and tumbles off their side
+  of the screen, then "<CHARACTER> WINS!" is declared with victory sparks
+  before the rematch menu appears. The winner is always named by character,
+  not player number.
 - **Audio** (all from the Unity project's `Assets/Audio`, transcoded to mp3):
   - Music: tavern and battle tracks alternating forever (port of Unity
     `MusicPlayer`), over a quiet sea-waves loop.

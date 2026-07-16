@@ -97,6 +97,7 @@
   #fsBtn:active{ transform:translateY(-50%) scale(0.9); }
   #fsBtn[hidden]{ display:none; }
 
+  #winOverlay{ background:rgba(9,7,4,0.62); }
   #winTitle{ font-size:clamp(34px,7vh,58px); }
   #winTaunt{ margin:18px 0 26px; font-size:clamp(14px,2vh,17px); color:var(--parch-dim); font-style:italic; }
   .flag{ font-size:clamp(40px,8vh,64px); margin-bottom:6px; filter:drop-shadow(0 4px 12px rgba(0,0,0,.6)); }
@@ -188,19 +189,19 @@ function waveFor(i){
    charged by clearing waves (faster + cleaner = more charge). */
 const CHARACTERS = [
   { id:'redbeard', name:'Redbeard', title:'the Cannoneer', avatar:0, accentIcon:'💣',
-    theme:{ glow:'#ff7a30', particle:'ember' },
+    theme:{ glow:'#ff7a30', particle:'ember', deck:null },   // the default ship
     basic:{ icon:'💣', name:'Pot Shot', cd:8,
             desc:'Lob a cannonball at the enemy deck (6 damage).' },
     ult:  { icon:'💥', name:'Broadside',
             desc:'Rake the enemy deck with five cannonballs (8 damage each).' } },
   { id:'frostjaw', name:'White Death', title:'the Iceberg', avatar:2, accentIcon:'❄️',
-    theme:{ glow:'#a8dcff', particle:'flake' },
+    theme:{ glow:'#a8dcff', particle:'flake', deck:'snow' }, // frost-bitten deck
     basic:{ icon:'❄️', name:'Cold Snap', cd:8,
             desc:'Flash-freeze the enemy board for 0.8s.' },
     ult:  { icon:'🧊', name:'Deep Freeze',
             desc:'Freeze the enemy board solid for 2.6s — their wave timer keeps burning.' } },
   { id:'inkeye', name:'Inkeye', title:'the Cursed', avatar:1, accentIcon:'🦑',
-    theme:{ glow:'#9a6ec9', particle:'wisp' },
+    theme:{ glow:'#9a6ec9', particle:'wisp', deck:'dark' },  // worn, cursed wood
     basic:{ icon:'🦑', name:'Ink Spit', cd:8,
             desc:'Splat one ink blob over the enemy board for 2.5s.' },
     ult:  { icon:'👻', name:'Kraken’s Curse',
@@ -582,6 +583,30 @@ function drawButtonFace(g, x, y, r, kind, seed=0){
   kind.draw(g, x, y, r);
 }
 
+/* Fast comic-book explosion: smoke halo, fireball, hot core, radiating
+   spikes — drawn from t 0..1 and gone in a blink. */
+function drawBoom(g, x, y, s, t){
+  const ease = 1 - (1-t)*(1-t);
+  const R = s*(0.4 + ease*1.4), a = 1 - t;
+  g.globalAlpha = a*0.5; g.fillStyle = '#3a2a1e';
+  g.beginPath(); g.arc(x, y, R*1.3, 0, TAU); g.fill();
+  g.globalAlpha = a*0.9; g.fillStyle = '#ff8a2b';
+  g.beginPath(); g.arc(x, y, R, 0, TAU); g.fill();
+  g.globalAlpha = a; g.fillStyle = '#ffd44d';
+  g.beginPath(); g.arc(x, y, R*0.62, 0, TAU); g.fill();
+  g.fillStyle = '#fff8e0';
+  g.beginPath(); g.arc(x, y, R*0.3, 0, TAU); g.fill();
+  g.strokeStyle = `rgba(255,220,120,${a})`; g.lineWidth = s*0.1; g.lineCap = 'round';
+  for (let i=0;i<8;i++){
+    const ang = i*TAU/8 + t*0.6;
+    g.beginPath();
+    g.moveTo(x+Math.cos(ang)*R*1.05, y+Math.sin(ang)*R*1.05);
+    g.lineTo(x+Math.cos(ang)*R*(1.3+ease*0.35), y+Math.sin(ang)*R*(1.3+ease*0.35));
+    g.stroke();
+  }
+  g.globalAlpha = 1;
+}
+
 function shuffled(arr){
   const a = arr.slice();
   for (let i=a.length-1; i>0; i--){
@@ -800,7 +825,7 @@ class Board {
       const sx = W/old.W, sy = H/old.H;
       for (const b of this.buttons){ b.x*=sx; b.tx*=sx; b.y*=sy; b.ty*=sy; }
     }
-    this.planks = makePlanks(W, H, (this.theme && this.theme.glow) || this.accent);
+    this.planks = makePlanks(W, H, (this.theme && this.theme.glow) || this.accent, this.theme && this.theme.deck);
   }
   playArea(){
     return { x0:this.R+14, x1:this.W-this.R-14,
@@ -870,6 +895,11 @@ class Board {
     for (const b of this.buttons){ // juggle drift
       b.x += (b.tx-b.x)*Math.min(1, dt*10);
       b.y += (b.ty-b.y)*Math.min(1, dt*10);
+    }
+    if (now < this.ghostUntil && !REDUCED_MOTION && Math.random() < 0.12){
+      this.particles.push({ type:'wisp', t0:now, life:rand(1.2,2),
+        x:rand(30,this.W-30), y:rand(this.hudH+20,this.H-60),
+        vx:rand(-12,12), vy:-rand(6,16), size:rand(6,14), color:'#cfd8ff', ph:rand(0,TAU) });
     }
     if (this.theme && now >= this.nextThemeAt && !REDUCED_MOTION){
       this.spawnThemeParticle(now);
@@ -1003,7 +1033,7 @@ class Board {
     this.game.applyDamage(1 - this.idx, this.wave.dmg, null, null, this.idx);
     if (b.powder){
       play('boom', 0.9);
-      this.burst(b.x, b.y, '#ff9c3f', now, 26);
+      this.explosion(b.x, b.y, this.R*1.3, now);
       this.shakeUntil = now + 0.35;
       this.game.applyDamage(this.idx, POWDER_SELF_DMG, b.x, b.y);
     }
@@ -1044,6 +1074,9 @@ class Board {
       }
       if (spots.every((s,i)=>s.x===live[i].tx && s.y===live[i].ty)) spots.push(spots.shift());
       live.forEach((b,i)=>{ b.tx = spots[i].x; b.ty = spots[i].y; });
+      for (const bt of live)
+        this.particles.push({ type:'ring', x:bt.x, y:bt.y, t0:now, life:0.5,
+          size:bt.r*1.3, color:'#e0a23c' });
     }
     this.setAnnounce('🐵 JUGGLED!', '#e0a23c', now, 1.0);
     Snd.juggle();
@@ -1061,21 +1094,26 @@ class Board {
     play('cast', 0.9);
     this.setMood('shock', 1.2, now);
   }
+  explosion(x, y, size, now){
+    this.particles.push({ type:'boom', x, y, size, t0:now, life:0.38 });
+    this.particles.push({ type:'ring', x, y, t0:now, life:0.5, size:size*1.5, color:'#ffca6a' });
+    this.burst(x, y, '#ff9c3f', now, 26);
+    this.smoke(x, y, now);
+  }
   cannonImpact(x, y, now){
     play('boom', 1);
-    this.burst(x, y, '#ff8a3f', now, 30);
-    this.smoke(x, y, now);
-    this.shakeUntil = now + 0.4;
+    this.explosion(x, y, this.R*1.6, now);
+    this.shakeUntil = now + 0.45;
   }
   /* --- particles --- */
   burst(x, y, color, now, n=14){
     if (REDUCED_MOTION) n = Math.min(n, 6);
     for (let i=0;i<n;i++){
-      const a = rand(0,TAU), sp = rand(60,260);
+      const a = rand(0,TAU), sp = rand(90,360);
       this.particles.push({ type:'spark', x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-        t0:now, life:rand(0.35,0.7), size:rand(2,5), color });
+        t0:now, life:rand(0.35,0.7), size:rand(2.5,6), color });
     }
-    this.particles.push({ type:'ring', x, y, t0:now, life:0.4, size:this.R, color });
+    this.particles.push({ type:'ring', x, y, t0:now, life:0.45, size:this.R*1.25, color });
   }
   smoke(x, y, now){
     for (let i=0;i<8;i++){
@@ -1083,7 +1121,7 @@ class Board {
         vx:rand(-20,20), vy:rand(-50,-15), t0:now, life:rand(0.6,1.1), size:rand(8,18), color:'#9aa0a6' });
     }
   }
-  addX(x, y, now){ this.particles.push({type:'x', x, y, t0:now, life:0.45, size:this.R*0.8, color:'#ff5a4d'}); }
+  addX(x, y, now){ this.particles.push({type:'x', x, y, t0:now, life:0.5, size:this.R*1.15, color:'#ff5a4d'}); }
   addRipple(x, y, now){ this.particles.push({type:'ring', x, y, t0:now, life:0.4, size:this.R*0.7, color:'#ff5a4d'}); }
   addFloat(txt, color, x, y, now){ this.floats.push({txt, color, x, y, t0:now}); }
 }
@@ -1091,7 +1129,7 @@ class Board {
 /* Deck background: the original PlanksDiffuse texture, tinted with the
    player's lantern glow. Falls back to procedural planks if the image
    is unavailable. */
-function makePlanks(W, H, accent){
+function makePlanks(W, H, accent, deck){
   const c = document.createElement('canvas');
   c.width = Math.max(1, W); c.height = Math.max(1, H);
   const g = c.getContext('2d');
@@ -1114,6 +1152,28 @@ function makePlanks(W, H, accent){
       g.fillRect(0, y, W, ph);
       g.fillStyle = 'rgba(0,0,0,0.35)';
       g.fillRect(0, y, W, 2);
+    }
+  }
+  if (deck === 'snow'){                       // White Death: frosted planks + drifts
+    g.fillStyle = 'rgba(228,242,250,0.32)';
+    g.fillRect(0, 0, W, H);
+    for (const [cx, cy] of [[0,0],[W,0],[0,H],[W,H]]){
+      const dg = g.createRadialGradient(cx, cy, 0, cx, cy, Math.min(W,H)*0.55);
+      dg.addColorStop(0, 'rgba(242,250,255,0.45)');
+      dg.addColorStop(1, 'rgba(242,250,255,0)');
+      g.fillStyle = dg;
+      g.fillRect(0, 0, W, H);
+    }
+  } else if (deck === 'dark'){                // Inkeye: worn, cursed wood
+    g.fillStyle = 'rgba(18,9,26,0.4)';
+    g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(0,0,0,0.3)';        // deep grain scars
+    g.lineWidth = 2;
+    for (let i=0;i<7;i++){
+      const gy = (i*173)%H, gx = (i*257)%(W/2);
+      g.beginPath(); g.moveTo(gx, gy);
+      g.quadraticCurveTo(gx+W*0.3, gy+6, gx+W*0.55, gy-4);
+      g.stroke();
     }
   }
   // lantern glow at the player's own edge (local y = H)
@@ -1191,7 +1251,7 @@ class Game {
     b.avatar = AVATARS[CHARACTERS[ci].avatar];
     b.voice = b.avatar.voice;
     b.theme = CHARACTERS[ci].theme;
-    b.planks = makePlanks(b.W, b.H, b.theme.glow);  // deck takes the character's glow
+    b.planks = makePlanks(b.W, b.H, b.theme.glow, b.theme.deck);  // the character claims the ship
     b.setMood('smile', 1.4, now);
     play('click', 0.7);
     play(b.voice + '-smile', 0.9);
@@ -1284,12 +1344,16 @@ class Game {
   endGame(winnerIdx){
     this.running = false;
     this.winner = winnerIdx;
+    this.phase = 'gameover';
     const now = performance.now()/1000;
-    this.boards[winnerIdx].setMood('smile', 9999, now);
-    this.boards[1-winnerIdx].setMood('angry', 9999, now);
-    Snd.fanfare();
-    play((winnerIdx === 0 ? 'p1' : 'p2') + '-smile', 1);
-    play((winnerIdx === 0 ? 'p2' : 'p1') + '-angry', 0.9);
+    this.overAt = now;
+    this.overBoomed = false;
+    const winB = this.boards[winnerIdx], loseB = this.boards[1-winnerIdx];
+    winB.setMood('smile', 9999, now);
+    loseB.setMood('angry', 9999, now);
+    play(winB.voice + '-smile', 1);
+    setTimeout(()=>{ play(loseB.voice + '-angry', 0.95); }, 500);
+    setTimeout(()=>{ Snd.fanfare(); }, 1500);
     const taunts = [
       'The loser walks the plank. Slowly. For dramatic effect.',
       'Faster fingers, fuller treasure chest.',
@@ -1299,12 +1363,12 @@ class Game {
     ];
     setTimeout(()=>{
       const t = document.getElementById('winTitle');
-      t.textContent = PLAYER_NAME[winnerIdx] + ' wins';
-      t.style.color = PLAYER_ACCENT[winnerIdx];
+      t.textContent = winB.character.name + ' wins';
+      t.style.color = (winB.theme && winB.theme.glow) || winB.accent;
       document.getElementById('winTaunt').textContent =
         '“' + taunts[Math.floor(Math.random()*taunts.length)] + '”';
       document.getElementById('winOverlay').hidden = false;
-    }, 900);
+    }, 3000);
   }
   loop(){
     const now = performance.now()/1000;
@@ -1441,6 +1505,10 @@ class Game {
       this.renderVs(g, b, now);
       return;
     }
+    if (this.phase === 'gameover'){
+      this.renderGameOver(g, b, now);
+      return;
+    }
 
     // wave-timer fuse under the HUD
     if (b.state === 'active' && this.running){
@@ -1489,6 +1557,18 @@ class Game {
         g.fill();
       }
       g.beginPath(); g.arc(k.x, k.y, k.r*0.75*wob, 0, TAU); g.fill();
+      g.fillStyle = `rgba(140,105,190,${alpha*0.22})`;             // wet sheen
+      g.beginPath(); g.ellipse(k.x - k.r*0.25, k.y - k.r*0.3, k.r*0.4, k.r*0.22, -0.5, 0, TAU); g.fill();
+      g.fillStyle = `rgba(18,13,26,${alpha*0.9})`;                 // dripping droplets
+      for (const [ddx, ddr] of [[-0.45, 0.1], [0.3, 0.13]]){
+        const dy = k.r*(0.8 + 0.25*Math.sin(now*1.5 + k.ph + ddx*9));
+        g.beginPath(); g.arc(k.x + k.r*ddx, k.y + dy, k.r*ddr, 0, TAU); g.fill();
+      }
+      if (age < 0.35){                                             // landing splash
+        const st = age/0.35;
+        g.strokeStyle = `rgba(120,90,160,${(1-st)*0.8})`; g.lineWidth = 4*(1-st)+1;
+        g.beginPath(); g.arc(k.x, k.y, k.r*(0.8 + st*0.7), 0, TAU); g.stroke();
+      }
       if (age < 0.6){
         g.globalAlpha = 1 - age/0.6;
         g.font = `${Math.round(k.r*0.8)}px serif`;
@@ -1500,16 +1580,36 @@ class Game {
     // freeze overlay (power-up row stays above it, still tappable)
     if (now < b.frozenUntil){
       const left = b.frozenUntil - now;
-      const a = Math.min(1, left*3) * 0.9;
-      g.fillStyle = `rgba(150,205,255,${a*0.2})`;
-      g.fillRect(0, b.hudH, b.W, b.puY - b.puR*1.5 - b.hudH);
-      g.strokeStyle = `rgba(190,225,255,${a*0.75})`;
-      g.lineWidth = 3;
-      g.strokeRect(6, b.hudH+6, b.W-12, b.puY - b.puR*1.5 - b.hudH - 12);
-      g.globalAlpha = a*(0.75+Math.sin(now*10)*0.2);
-      g.font = `${Math.round(b.R*1.5)}px serif`;
-      g.textAlign='center'; g.textBaseline='middle';
-      g.fillText('❄️', b.W/2, (b.hudH + b.puY)/2);
+      const a = Math.min(1, left*3);
+      const top = b.hudH, bot = b.puY - b.puR*1.5, midY = (top+bot)/2;
+      const icy = g.createRadialGradient(b.W/2, midY, 30, b.W/2, midY, Math.max(b.W, bot-top)*0.62);
+      icy.addColorStop(0, `rgba(175,225,255,${a*0.1})`);
+      icy.addColorStop(1, `rgba(140,200,255,${a*0.36})`);
+      g.fillStyle = icy;
+      g.fillRect(0, top, b.W, bot-top);
+      g.fillStyle = `rgba(210,238,255,${a*0.8})`;      // crystal shards on both rims
+      for (let x=14; x<b.W-8; x+=34){
+        const hgt = (12 + (x*53)%16) * a;
+        g.beginPath(); g.moveTo(x-9, top); g.lineTo(x+9, top); g.lineTo(x, top+hgt); g.closePath(); g.fill();
+        g.beginPath(); g.moveTo(x+8, bot); g.lineTo(x+26, bot); g.lineTo(x+17, bot-hgt); g.closePath(); g.fill();
+      }
+      g.save();                                        // big slow snowflake
+      g.translate(b.W/2, midY);
+      g.rotate(REDUCED_MOTION ? 0 : now*0.5);
+      g.globalAlpha = a*(0.55 + Math.sin(now*8)*0.15);
+      g.strokeStyle = '#dff2ff'; g.lineWidth = 3.5; g.lineCap = 'round';
+      const fr = b.R*1.4;
+      for (let i=0;i<6;i++){
+        const ang = i*TAU/6;
+        g.beginPath(); g.moveTo(0,0); g.lineTo(Math.cos(ang)*fr, Math.sin(ang)*fr); g.stroke();
+        const jx = Math.cos(ang)*fr*0.55, jy = Math.sin(ang)*fr*0.55;
+        for (const sd of [-1,1]){
+          const a2 = ang + sd*0.5;
+          g.beginPath(); g.moveTo(jx, jy);
+          g.lineTo(jx+Math.cos(a2)*fr*0.28, jy+Math.sin(a2)*fr*0.28); g.stroke();
+        }
+      }
+      g.restore();
       g.globalAlpha = 1;
       for (const f of b.frostTaps){
         const t = (now-f.t0)/0.5;
@@ -1617,6 +1717,8 @@ class Game {
       g.beginPath();
       g.arc(p.x + p.vx*t*p.life, p.y + p.vy*t*p.life, p.size*(0.6+t), 0, TAU);
       g.fill();
+    } else if (p.type === 'boom'){
+      drawBoom(g, p.x, p.y, p.size, t);
     } else if (p.type === 'ember'){
       g.globalAlpha = (1-t)*(0.5 + 0.4*Math.sin(now*20 + p.ph));
       g.fillStyle = p.color;
@@ -1795,6 +1897,61 @@ class Game {
     const dots = '.'.repeat(1 + Math.floor(now*2)%3);
     g.fillText('READY THE CANNONS' + dots, W/2, H*0.78);
     g.globalAlpha = 1;
+  }
+  /* Knockout ending, staged like the VS splash: both portraits square up,
+     the loser takes an explosion to the face and is blown off screen,
+     then the winner is declared. */
+  renderGameOver(g, b, now){
+    const W = b.W, H = b.H;
+    g.fillStyle = 'rgba(8,6,3,0.6)';
+    g.fillRect(0, 0, W, H);
+    const tt = now - this.overAt;
+    const r = Math.min(W*0.17, H*0.2), cy = H*0.4;
+    const iWon = b.idx === this.winner;
+    const winX = iWon ? W*0.26 : W*0.74;
+    const loseX = iWon ? W*0.74 : W*0.26;
+    const winB = this.boards[this.winner], loseB = this.boards[1-this.winner];
+    // loser: takes the hit at 0.5s, then tumbles off their side of the screen
+    const fly = clamp((tt - 0.62)/1.0, 0, 1);
+    if (fly < 1){
+      const dir = loseX < W/2 ? -1 : 1;
+      const lx = loseX + dir*fly*fly*(W*0.85 + r*2);
+      const ly = cy - Math.sin(fly*Math.PI*0.6)*H*0.1;
+      const shake = (tt > 0.5 && tt < 0.75 && !REDUCED_MOTION) ? rand(-3,3) : 0;
+      g.save();
+      g.translate(lx + shake, ly + shake);
+      g.rotate(REDUCED_MOTION ? 0 : dir*fly*5);
+      drawPirate(g, loseB.avatar, 0, 0, r, now, fly > 0 ? 'shock' : 'angry', false);
+      g.restore();
+    }
+    // winner: stands tall, grinning
+    const wob = 1 + (REDUCED_MOTION ? 0 : Math.sin(now*3)*0.03);
+    drawPirate(g, winB.avatar, winX, cy, r*wob, now, 'smile', now < b.blinkUntil);
+    // the blast
+    if (tt >= 0.5 && tt <= 1.0) drawBoom(g, loseX, cy, r*0.85, (tt-0.5)/0.5);
+    if (!this.overBoomed && tt >= 0.5){ this.overBoomed = true; play('boom', 1); }
+    // declaration
+    const dt = clamp((tt - 1.4)/0.35, 0, 1);
+    if (dt > 0){
+      g.globalAlpha = dt;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      const size = Math.min(W*0.1, 42)*(0.8 + dt*0.2);
+      g.font = `900 ${Math.round(size)}px Georgia, serif`;
+      g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 6;
+      g.strokeText(winB.character.name.toUpperCase() + ' WINS!', W/2, H*0.66);
+      g.fillStyle = '#ffd44d';
+      g.fillText(winB.character.name.toUpperCase() + ' WINS!', W/2, H*0.66);
+      g.font = `italic ${Math.round(Math.min(W*0.04, 18))}px Georgia, serif`;
+      g.fillStyle = (winB.theme && winB.theme.glow) || winB.accent;
+      g.fillText(winB.character.title, W/2, H*0.66 + Math.min(H*0.05, 26));
+      g.globalAlpha = 1;
+      if (!REDUCED_MOTION && Math.random() < 0.25){  // victory sparks
+        b.particles.push({ type:'spark', x:rand(W*0.2,W*0.8), y:H*0.66,
+          vx:rand(-90,90), vy:-rand(60,160), t0:now, life:rand(0.5,0.9),
+          size:rand(2,4.5), color:(winB.theme && winB.theme.glow) || '#ffd44d' });
+      }
+      for (const pp of b.particles) if (pp.type === 'spark') this.renderParticle(g, pp, now);
+    }
   }
   renderSelect(g, b, now){
     g.font = `700 ${Math.round(Math.min(b.W*0.055, 30))}px Georgia, serif`;
