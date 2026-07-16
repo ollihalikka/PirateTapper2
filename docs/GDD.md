@@ -211,6 +211,11 @@ Inkeye & White Death = p2 (adding a third voice set is a `VOICES` entry + files)
   happened; every enemy effect announces itself on the victim's board
   (FROZEN / JUGGLED / CURSED / GUNPOWDER); every ability the caster fires is
   named on the caster's board.
+- **Cannon fire is diegetic:** cannonball abilities crack from the enemy
+  ship's hull (muzzle flash at the waterline) and visibly arc across the
+  water onto your deck, swelling mid-flight, before the impact lands.
+- **HUD portraits:** each player's character is a large badge (~2× the HUD
+  strip height) overhanging their deck; button spawns avoid the portrait zone.
 - **Health bar:** tall high-contrast bar with the HP number inside it
   (white, outlined), a white blink + red border flash on every hit, and a
   fighting-game "ghost" segment — the chunk just lost stays red and drains
@@ -447,11 +452,11 @@ so they aren't lost; not yet committed or specced in detail.
   **heroic/ultimate-tier ability** a character unleashes on the opponent.
   Decide which framing once §11's storm-ramp playtest tells us how much
   late-game chaos the game wants.
-- **Pre-fight splash screen (X vs. Y)** — a versus intro before the match
-  where each player's chosen character, **skin, and taunt** are shown off
-  (portrait, name/title, a taunt voice line). Directly monetizes cosmetics by
-  giving them a spotlight moment, and sets the rivalry tone. Cheap to
-  prototype from existing avatar/voice data; gets richer as skins/taunts ship.
+- **Pre-fight splash screen (X vs. Y)** — *shipped in basic form*: after both
+  players pick, a 2.6 s splash slides both portraits in with names/titles, a
+  gold VS, and a voice exchange (your pirate grins, theirs growls). Grows
+  richer as skins and taunt lines ship — this screen is their spotlight.
+  Remaining: per-character taunt voice lines, skin display.
 - **Defensive abilities / maneuvers** — a way to **shield** against incoming
   sabotage (block or cleanse a freeze/ink/curse, or a brief immunity window).
   Could be **universal** (a shared parry on a long cooldown — adds a

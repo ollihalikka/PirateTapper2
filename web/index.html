@@ -829,9 +829,11 @@ class Board {
     const a = this.playArea(), out = [];
     for (let i=0;i<n;i++){
       let x=0, y=0, ok=false;
+      const ax = this.hudH*1.05, ay = this.hudH*0.9, ar = this.hudH*1.0;  // portrait zone
       for (let t=0; t<300 && !ok; t++){
         x = rand(a.x0, a.x1); y = rand(a.y0, a.y1);
-        ok = out.every(p => Math.hypot(p.x-x, p.y-y) > this.R*2.55);
+        ok = out.every(p => Math.hypot(p.x-x, p.y-y) > this.R*2.55) &&
+             Math.hypot(x-ax, y-ay) > ar + this.R;
       }
       out.push({x, y});
     }
@@ -1195,7 +1197,11 @@ class Game {
     play(b.voice + '-smile', 0.9);
     if (this.boards.every(x => x.charIdx != null)){
       this.phase = 'countdown';
-      this.matchStartAt = now + 1.1;
+      this.vsStartAt = now;
+      this.matchStartAt = now + 2.6;     // pre-fight splash: X vs. Y
+      play('cast', 0.9);
+      play(this.boards[0].voice + '-smile', 0.9);
+      play(this.boards[1].voice + '-angry', 0.85);
     }
   }
   beginMatch(now){
@@ -1255,9 +1261,12 @@ class Game {
   }
   scheduleCannons(boardIdx, n, dmg, now){
     const a = this.boards[boardIdx].playArea();
+    const FLIGHT = 0.35;   // each ball is visible in the air this long
     for (let i=0;i<n;i++){
-      this.pendingHits.push({ t: now + 0.35 + i*0.38, board: boardIdx, dmg,
-        x: rand(a.x0, a.x1), y: rand(a.y0, a.y1) });
+      const x = rand(a.x0, a.x1), y = rand(a.y0, a.y1);
+      this.pendingHits.push({ fireT: now + i*0.38, t: now + FLIGHT + i*0.38,
+        flight: FLIGHT, board: boardIdx, dmg, x, y,
+        fx: clamp(x + rand(-70, 70), 20, this.W - 20), fired: false });
     }
   }
   /* the single choke-point every hit goes through — this is the
@@ -1307,6 +1316,11 @@ class Game {
       for (const b of this.boards) b.update(now, dt);
       for (let i=this.pendingHits.length-1; i>=0; i--){
         const h = this.pendingHits[i];
+        if (!h.fired && now >= h.fireT){       // muzzle crack at the enemy hull
+          h.fired = true;
+          play('boom', 0.3, 1.5);
+          this.boards[h.board].burst(h.fx, 8, '#ffd08a', now, 8);
+        }
         if (now >= h.t){
           this.boards[h.board].cannonImpact(h.x, h.y, now);
           this.applyDamage(h.board, h.dmg, h.x, h.y);
@@ -1419,15 +1433,19 @@ class Game {
     }
     g.drawImage(b.planks, 0, 0);
 
-    if (this.phase === 'select' || this.phase === 'countdown'){
+    if (this.phase === 'select'){
       this.renderSelect(g, b, now);
+      return;
+    }
+    if (this.phase === 'countdown'){
+      this.renderVs(g, b, now);
       return;
     }
 
     // wave-timer fuse under the HUD
     if (b.state === 'active' && this.running){
       const frac = clamp((b.deadline-now)/b.wave.clear, 0, 1);
-      const fx0 = Math.round(b.hudH*1.5), fw = b.W - fx0 - 14; // clears the avatar chin
+      const fx0 = Math.round(b.hudH*2.25), fw = b.W - fx0 - 14; // clears the portrait
       g.fillStyle = 'rgba(0,0,0,0.4)';
       g.fillRect(fx0, b.hudH+3, fw, 5);
       g.fillStyle = frac > 0.35 ? '#e8c469' : '#ff5a3d';
@@ -1444,6 +1462,20 @@ class Game {
     for (const bt of b.buttons) this.renderButton(g, b, bt, now);
     // effect particles
     for (const p of b.particles) if (!p.bg) this.renderParticle(g, p, now);
+    // incoming cannonballs arcing over from the enemy ship (divider side)
+    for (const h of this.pendingHits){
+      if (h.board !== b.idx || !h.fired || now >= h.t) continue;
+      const pr = clamp((now - h.fireT)/h.flight, 0, 1);
+      const cx = h.fx + (h.x - h.fx)*pr;
+      const cy = 2 + (h.y - 2)*pr;
+      const size = 5 + Math.sin(pr*Math.PI)*5;   // swells mid-arc
+      g.fillStyle = 'rgba(0,0,0,0.25)';
+      g.beginPath(); g.ellipse(cx+3, cy+6, size*0.9, size*0.5, 0, 0, TAU); g.fill();
+      g.fillStyle = '#15181c';
+      g.beginPath(); g.arc(cx, cy, size, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.25)';
+      g.beginPath(); g.arc(cx-size*0.3, cy-size*0.3, size*0.3, 0, TAU); g.fill();
+    }
     // kraken ink sits on top of everything in play
     for (const k of b.inkBlobs){
       const age = now - k.t0, left = k.until - now;
@@ -1614,9 +1646,9 @@ class Game {
     g.fillRect(0, 0, b.W, b.hudH);
     g.fillStyle = 'rgba(232,196,105,0.4)';
     g.fillRect(0, b.hudH-1, b.W, 1);
-    drawPirate(g, b.avatar, b.hudH*0.85, b.hudH*0.66, b.hudH*0.55, now,
-               b.moodNow(now), now < b.blinkUntil);
-    const bx = Math.round(b.hudH*1.85), bw = b.W - bx - 144,
+    drawPirate(g, b.avatar, b.hudH*1.05, b.hudH*0.9, b.hudH*1.0, now,
+               b.moodNow(now), now < b.blinkUntil);   // big badge, overhangs the deck
+    const bx = Math.round(b.hudH*2.25), bw = b.W - bx - 144,
           bh = Math.max(18, b.hudH*0.52), by = (b.hudH-bh)/2;
     const flash = clamp((b.hpFlashUntil - now)/0.4, 0, 1);
     g.fillStyle = 'rgba(0,0,0,0.6)';
@@ -1721,6 +1753,48 @@ class Game {
       g.fillText(ch.ult.icon, x, y+1);
       g.globalAlpha = 1;
     }
+  }
+  /* Pre-fight splash: your pirate squares up against theirs. This is the
+     future spotlight for skins and taunts (see GDD wishlist). */
+  renderVs(g, b, now){
+    const W = b.W, H = b.H;
+    g.fillStyle = 'rgba(8,6,3,0.55)';
+    g.fillRect(0, 0, W, H);
+    const foe = this.boards[1 - b.idx];
+    const t = clamp((now - this.vsStartAt)/0.4, 0, 1);         // slide-in
+    const ease = 1 - (1-t)*(1-t);
+    const r = Math.min(W*0.17, H*0.2);
+    const cy = H*0.4;
+    const mx = -r + (W*0.26 + r)*ease;                          // me from the left
+    const fx = W + r - (W*0.26 + r)*ease;                       // them from the right
+    drawPirate(g, b.avatar, mx, cy, r, now, 'smile', false);
+    drawPirate(g, foe.avatar, fx, cy, r, now, 'angry', false);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    const nameY = cy + r + Math.min(H*0.055, 26);
+    g.font = `700 ${Math.round(Math.min(W*0.055, 26))}px Georgia, serif`;
+    g.strokeStyle = 'rgba(0,0,0,0.75)'; g.lineWidth = 4;
+    g.strokeText(b.character.name.toUpperCase(), mx, nameY);
+    g.fillStyle = (b.theme && b.theme.glow) || b.accent;
+    g.fillText(b.character.name.toUpperCase(), mx, nameY);
+    g.strokeText(foe.character.name.toUpperCase(), fx, nameY);
+    g.fillStyle = (foe.theme && foe.theme.glow) || foe.accent;
+    g.fillText(foe.character.name.toUpperCase(), fx, nameY);
+    g.font = `italic ${Math.round(Math.min(W*0.035, 16))}px Georgia, serif`;
+    g.fillStyle = '#c9b98d';
+    g.fillText(b.character.title, mx, nameY + Math.min(H*0.04, 20));
+    g.fillText(foe.character.title, fx, nameY + Math.min(H*0.04, 20));
+    const pulse = 1 + (REDUCED_MOTION ? 0 : Math.sin(now*6)*0.06);
+    g.globalAlpha = ease;
+    g.font = `900 ${Math.round(Math.min(W*0.16, H*0.18)*pulse)}px Georgia, serif`;
+    g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 7;
+    g.strokeText('VS', W/2, cy);
+    g.fillStyle = '#ffd44d';
+    g.fillText('VS', W/2, cy);
+    g.font = `600 ${Math.round(Math.min(W*0.04, 18))}px Georgia, serif`;
+    g.fillStyle = '#e8c469';
+    const dots = '.'.repeat(1 + Math.floor(now*2)%3);
+    g.fillText('READY THE CANNONS' + dots, W/2, H*0.78);
+    g.globalAlpha = 1;
   }
   renderSelect(g, b, now){
     g.font = `700 ${Math.round(Math.min(b.W*0.055, 30))}px Georgia, serif`;
