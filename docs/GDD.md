@@ -70,10 +70,12 @@ endless overtime so matches always terminate.
 
 ## 3. Buttons
 
-A pool of **16 button identities** (rooted in the Unity `Poppable_Buttons`
-set, expanded with more pirate icons): skull, anchor, coin, rum bottle,
-gunpowder barrel, pistol, rudder, cannonballs, cannon, treasure chest, hook,
-map, ship, skull flag, spyglass, and crossed swords. **No numbers, no hints**:
+A pool of **10 button identities** (rooted in the Unity `Poppable_Buttons`
+set, expanded with more pirate icons): skull, anchor, rum bottle, pistol,
+rudder, treasure chest, hook, skull flag, spyglass, and crossed swords.
+(The bomb and cannon icons serve as Redbeard's ability art instead; coin,
+ship, map, and barrel are retired until their assets are reworked.)
+**No numbers, no hints**:
 identity is the memory hook. Each button carries **two redundant anchors**
 (helps memory, doubles as colorblind support): a distinct **mark** and a
 distinct **face color**.
@@ -83,9 +85,9 @@ Visual construction: each button ships as a circular icon PNG
 `docs/ASSET_SPECS.md`). If an icon is missing, the engine falls back to a
 procedural wooden disc with a painted mark and per-kind face color.
 
-Each wave deals a random subset (Fisher–Yates shuffle) of the pool — with 16
-kinds and only 2–6 per wave, repetition across waves is rare, so "the rum
-bottle came third" is a fresh fact every wave.
+Each wave deals a random subset (Fisher–Yates shuffle) of the pool — with 10
+kinds and only 2–6 per wave, repetition across waves stays uncommon, so "the
+rum bottle came third" is a fresh fact every wave.
 
 Placement: random inside the play area, minimum spacing 2.55 × button radius,
 up to 300 retries per button (mirrors the original's 500-retry loop).
@@ -213,8 +215,10 @@ Inkeye & White Death = p2 (adding a third voice set is a `VOICES` entry + files)
 - **Knockout ending:** on death the match cuts to a VS-style tableau — the
   loser's portrait takes an explosion to the face and tumbles off their side
   of the screen, then "<CHARACTER> WINS!" is declared with victory sparks
-  before the rematch menu appears. The winner is always named by character,
-  not player number.
+  and the winner's portrait strides to the center of each play area. The
+  rematch menu is a light translucent layer (quote + Run It Back only —
+  the on-canvas declarations carry the winner's name, shown once per
+  board). The winner is always named by character, not player number.
 - **Audio** (all from the Unity project's `Assets/Audio`, transcoded to mp3):
   - Music: tavern and battle tracks alternating forever (port of Unity
     `MusicPlayer`), over a quiet sea-waves loop.

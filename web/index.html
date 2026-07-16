@@ -97,8 +97,8 @@
   #fsBtn:active{ transform:translateY(-50%) scale(0.9); }
   #fsBtn[hidden]{ display:none; }
 
-  #winOverlay{ background:rgba(9,7,4,0.62); }
-  #winTitle{ font-size:clamp(34px,7vh,58px); }
+  #winOverlay{ background:rgba(9,7,4,0.45); }
+  #winTaunt{ font-size:clamp(15px,2.2vh,19px); }
   #winTaunt{ margin:18px 0 26px; font-size:clamp(14px,2vh,17px); color:var(--parch-dim); font-style:italic; }
   .flag{ font-size:clamp(40px,8vh,64px); margin-bottom:6px; filter:drop-shadow(0 4px 12px rgba(0,0,0,.6)); }
   @media (prefers-reduced-motion: no-preference){
@@ -136,7 +136,6 @@
     <div class="panel">
       <div class="flag">🏴‍☠️</div>
       <div class="eyebrow">The powder settles…</div>
-      <h1 id="winTitle">Player 1 wins</h1>
       <div id="winTaunt"></div>
       <button class="btn" id="againBtn">Run It Back</button>
     </div>
@@ -190,9 +189,9 @@ function waveFor(i){
 const CHARACTERS = [
   { id:'redbeard', name:'Redbeard', title:'the Cannoneer', avatar:0, accentIcon:'💣',
     theme:{ glow:'#ff7a30', particle:'ember', deck:null },   // the default ship
-    basic:{ icon:'💣', name:'Pot Shot', cd:8,
+    basic:{ icon:'💣', img:'icons/balls.png', name:'Pot Shot', cd:8,
             desc:'Lob a cannonball at the enemy deck (6 damage).' },
-    ult:  { icon:'💥', name:'Broadside',
+    ult:  { icon:'💥', img:'icons/cannon.png', name:'Broadside',
             desc:'Rake the enemy deck with five cannonballs (8 damage each).' } },
   { id:'frostjaw', name:'White Death', title:'the Iceberg', avatar:2, accentIcon:'❄️',
     theme:{ glow:'#a8dcff', particle:'flake', deck:'snow' }, // frost-bitten deck
@@ -256,6 +255,9 @@ async function loadAssets(done){
   tryImage('planks','planks.jpg');
   tryImage('coin','coin.png');
   for (const k of BUTTON_KINDS) tryImage('icon:'+k.id, 'icons/'+k.id+'.png');
+  for (const c of CHARACTERS)
+    for (const ab of [c.basic, c.ult])
+      if (ab.img) tryImage('img:'+ab.img, ab.img);   // ability icon art
   for (const av of AVATARS){
     const png = 'characters/'+av.id+'.png';
     if (!assetExists(png)) continue;
@@ -404,26 +406,6 @@ const BUTTON_KINDS = [
       g.beginPath(); g.moveTo(x-0.55*s, y+0.32*s); g.lineTo(x-0.78*s, y+0.12*s); g.lineTo(x-0.4*s, y+0.05*s); g.closePath(); g.fill();
       g.beginPath(); g.moveTo(x+0.55*s, y+0.32*s); g.lineTo(x+0.78*s, y+0.12*s); g.lineTo(x+0.4*s, y+0.05*s); g.closePath(); g.fill();
   }},
-  { id:'coin',     disc:'#d4a017', bg:'#53406e', draw(g,x,y,s){
-      const gold='#d4a017', shade='#95700e';
-      g.fillStyle=gold;
-      g.beginPath(); g.arc(x, y, 0.74*s, 0, TAU); g.fill();
-      g.strokeStyle=shade; g.lineWidth=0.09*s;
-      g.beginPath(); g.arc(x, y, 0.63*s, 0, TAU); g.stroke();
-      for (let i=0;i<12;i++){                                                 // milled edge
-        const a=i*TAU/12;
-        g.beginPath();
-        g.moveTo(x+Math.cos(a)*0.66*s, y+Math.sin(a)*0.66*s);
-        g.lineTo(x+Math.cos(a)*0.74*s, y+Math.sin(a)*0.74*s);
-        g.stroke();
-      }
-      g.fillStyle=shade;                                                      // skull imprint
-      g.beginPath(); g.arc(x, y-0.08*s, 0.3*s, 0, TAU); g.fill();
-      g.fillRect(x-0.18*s, y+0.04*s, 0.36*s, 0.26*s);
-      g.fillStyle=gold;
-      g.beginPath(); g.arc(x-0.12*s, y-0.12*s, 0.08*s, 0, TAU); g.fill();
-      g.beginPath(); g.arc(x+0.12*s, y-0.12*s, 0.08*s, 0, TAU); g.fill();
-  }},
   { id:'bottle',   disc:'#2f6326', bg:'#cf9440', draw(g,x,y,s){
       g.fillStyle='#2f6326';
       g.fillRect(x-0.12*s, y-0.72*s, 0.24*s, 0.36*s);                         // neck
@@ -442,31 +424,6 @@ const BUTTON_KINDS = [
       g.font = `700 ${Math.round(0.3*s)}px Georgia, serif`;
       g.textAlign='center'; g.textBaseline='middle';
       g.fillText('XXX', x, y+0.28*s);
-  }},
-  { id:'barrel',   disc:'#a12318', bg:'#2f8f86', draw(g,x,y,s){
-      const stick='#a12318';
-      for (const [dx,dy] of [[-0.34,0.1],[0.34,0.1],[0,0.02]]){
-        g.fillStyle=stick;
-        const w=0.27*s, h=1.1*s, sx=x+dx*s-w/2, sy=y+dy*s-h/2;
-        g.beginPath();
-        g.roundRect ? g.roundRect(sx, sy, w, h, 0.1*s) : g.rect(sx, sy, w, h);
-        g.fill();
-        g.fillStyle='#5c1410';
-        g.fillRect(sx, sy+h*0.44, w, 0.12*s);
-      }
-      g.strokeStyle='#3b2a18'; g.lineWidth=0.08*s; g.lineCap='round';         // fuse
-      g.beginPath();
-      g.moveTo(x, y-0.53*s);
-      g.quadraticCurveTo(x+0.24*s, y-0.8*s, x+0.45*s, y-0.66*s);
-      g.stroke();
-      g.strokeStyle='#ffd44d'; g.lineWidth=0.07*s;                            // spark
-      for (let i=0;i<4;i++){
-        const a=i*TAU/4+0.4;
-        g.beginPath();
-        g.moveTo(x+0.45*s, y-0.66*s);
-        g.lineTo(x+0.45*s+Math.cos(a)*0.15*s, y-0.66*s+Math.sin(a)*0.15*s);
-        g.stroke();
-      }
   }},
   { id:'pistol',   disc:'#26292e', bg:'#b0616e', draw(g,x,y,s){
       const metal='#26292e', grip='#4a2f16';
@@ -499,24 +456,8 @@ const BUTTON_KINDS = [
       g.fillStyle=ink;
       g.beginPath(); g.arc(x, y, 0.2*s, 0, TAU); g.fill();                    // hub
   }},
-  { id:'balls',    disc:'#23272e', bg:'#8a9a4a', draw(g,x,y,s){
-      g.fillStyle='#23272e';
-      for (const [dx,dy] of [[0,-0.32],[-0.36,0.28],[0.36,0.28]]){
-        g.beginPath(); g.arc(x+dx*s, y+dy*s, 0.32*s, 0, TAU); g.fill();
-      }
-      g.fillStyle='rgba(255,255,255,0.28)';
-      for (const [dx,dy] of [[0,-0.32],[-0.36,0.28],[0.36,0.28]]){
-        g.beginPath(); g.arc(x+(dx-0.1)*s, y+(dy-0.11)*s, 0.08*s, 0, TAU); g.fill();
-      }
-  }},
-  // Icon-art kinds: their look ships as a PNG in assets/icons/<id>.png; the
-  // generic fallback below only shows if the image is missing. `bg` is the
-  // pop-particle accent, sampled from each icon.
-  { id:'cannon',    bg:'#4f9e3a', draw:genericMark },
   { id:'chest',     bg:'#c9432f', draw:genericMark },
   { id:'hook',      bg:'#e0b52b', draw:genericMark },
-  { id:'map',       bg:'#3f7fc0', draw:genericMark },
-  { id:'ship',      bg:'#3f8fd0', draw:genericMark },
   { id:'skull_flag',bg:'#d24b8f', draw:genericMark },
   { id:'spyglass',  bg:'#c05a3a', draw:genericMark },
   { id:'swords',    bg:'#7a3fb0', draw:genericMark },
@@ -607,6 +548,21 @@ function drawBoom(g, x, y, s, t){
     g.stroke();
   }
   g.globalAlpha = 1;
+}
+
+/* Ability icon: circular image art when present, emoji fallback. */
+function drawAbilityIcon(g, ab, x, y, r){
+  const img = ab.img && IMG['img:'+ab.img];
+  if (img){
+    g.save();
+    g.beginPath(); g.arc(x, y, r, 0, TAU); g.clip();
+    g.drawImage(img, x-r*1.06, y-r*1.06, r*2.12, r*2.12);
+    g.restore();
+  } else {
+    g.font = `${Math.round(r*1.3)}px serif`;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(ab.icon, x, y+1);
+  }
 }
 
 function shuffled(arr){
@@ -1382,9 +1338,6 @@ class Game {
       'Send word to port: a new tapping legend sails tonight.',
     ];
     setTimeout(()=>{
-      const t = document.getElementById('winTitle');
-      t.textContent = winB.character.name + ' wins';
-      t.style.color = (winB.theme && winB.theme.glow) || winB.accent;
       document.getElementById('winTaunt').textContent =
         '“' + taunts[Math.floor(Math.random()*taunts.length)] + '”';
       document.getElementById('winOverlay').hidden = false;
@@ -1887,9 +1840,7 @@ class Game {
       g.strokeStyle = cooling ? 'rgba(232,196,105,0.35)' : '#e8c469';
       g.lineWidth = cooling ? 1.5 : 2.5;
       g.beginPath(); g.arc(x, y, r, 0, TAU); g.stroke();
-      g.font = `${Math.round(r*1.05)}px serif`;
-      g.textAlign='center'; g.textBaseline='middle';
-      g.fillText(ch.basic.icon, x, y+1);
+      drawAbilityIcon(g, ch.basic, x, y, r*0.85);
       if (cooling){
         const frac = (b.basicCdUntil - now)/ch.basic.cd;
         g.fillStyle = 'rgba(10,7,4,0.65)';
@@ -1924,9 +1875,7 @@ class Game {
         g.stroke();
       }
       g.globalAlpha = ready ? 1 : 0.75;
-      g.font = `${Math.round(r*0.95)}px serif`;
-      g.textAlign='center'; g.textBaseline='middle';
-      g.fillText(ch.ult.icon, x, y+1);
+      drawAbilityIcon(g, ch.ult, x, y, r*0.72);
       g.globalAlpha = 1;
     }
   }
@@ -1957,8 +1906,9 @@ class Game {
     g.fillText(foe.character.name.toUpperCase(), fx, nameY);
     g.font = `italic ${Math.round(Math.min(W*0.035, 16))}px Georgia, serif`;
     g.fillStyle = '#c9b98d';
-    g.fillText(b.character.title, mx, nameY + Math.min(H*0.04, 20));
-    g.fillText(foe.character.title, fx, nameY + Math.min(H*0.04, 20));
+    const vsTitleY = nameY + Math.min(W*0.055, 26)*0.75 + Math.min(W*0.035, 16)*0.7 + 3;
+    g.fillText(b.character.title, mx, vsTitleY);
+    g.fillText(foe.character.title, fx, vsTitleY);
     const pulse = 1 + (REDUCED_MOTION ? 0 : Math.sin(now*6)*0.06);
     g.globalAlpha = ease;
     g.font = `900 ${Math.round(Math.min(W*0.16, H*0.18)*pulse)}px Georgia, serif`;
@@ -2020,7 +1970,7 @@ class Game {
       g.fillText(winB.character.name.toUpperCase() + ' WINS!', W/2, H*0.66);
       g.font = `italic ${Math.round(Math.min(W*0.04, 18))}px Georgia, serif`;
       g.fillStyle = (winB.theme && winB.theme.glow) || winB.accent;
-      g.fillText(winB.character.title, W/2, H*0.66 + Math.min(H*0.05, 26));
+      g.fillText(winB.character.title, W/2, H*0.66 + size*0.75 + Math.min(W*0.04, 18)*0.7 + 4);
       g.globalAlpha = 1;
       if (!REDUCED_MOTION && Math.random() < 0.25){  // victory sparks
         b.particles.push({ type:'spark', x:rand(W*0.2,W*0.8), y:H*0.66,
@@ -2055,14 +2005,20 @@ class Game {
       drawPirate(g, AVATARS[c.avatar], rc.x + rc.w/2, rc.y + rc.h*0.3, pr, now,
                  sel ? 'smile' : 'idle', now < b.blinkUntil);
       g.textAlign='center'; g.textBaseline='middle';
-      g.font = `700 ${Math.round(rc.w*0.13)}px Georgia, serif`;
+      // stack name / title / icons by font size so they never collide
+      const nameFs = Math.round(Math.min(rc.w*0.115, rc.h*0.085));
+      const titleFs = Math.round(nameFs*0.72);
+      const nameY = rc.y + rc.h*0.56 + pr*0.2;
+      const titleY = nameY + nameFs*0.75 + titleFs*0.62;
+      const iconsY = titleY + titleFs*0.9 + rc.w*0.12;
+      g.font = `700 ${nameFs}px Georgia, serif`;
       g.fillStyle = sel ? '#ffd44d' : '#e8c469';
-      g.fillText(c.name.toUpperCase(), rc.x + rc.w/2, rc.y + rc.h*0.6);
-      g.font = `italic ${Math.round(rc.w*0.095)}px Georgia, serif`;
+      g.fillText(c.name.toUpperCase(), rc.x + rc.w/2, nameY);
+      g.font = `italic ${titleFs}px Georgia, serif`;
       g.fillStyle = '#c9b98d';
-      g.fillText(c.title, rc.x + rc.w/2, rc.y + rc.h*0.7);
-      g.font = `${Math.round(rc.w*0.16)}px serif`;
-      g.fillText(c.basic.icon + '  ' + c.ult.icon, rc.x + rc.w/2, rc.y + rc.h*0.85);
+      g.fillText(c.title, rc.x + rc.w/2, titleY);
+      drawAbilityIcon(g, c.basic, rc.x + rc.w/2 - rc.w*0.14, iconsY, rc.w*0.1);
+      drawAbilityIcon(g, c.ult, rc.x + rc.w/2 + rc.w*0.14, iconsY, rc.w*0.1);
       g.globalAlpha = 1;
     }
     g.font = `600 ${Math.round(Math.min(b.W*0.035, 17))}px Georgia, serif`;
@@ -2076,11 +2032,14 @@ class Game {
 
 /* ---------------- boot ---------------- */
 const legend = document.getElementById('legend');
+const abIcon = ab => ab.img
+  ? `<img src="${assetUrl(ab.img)}" alt="" style="width:17px;height:17px;border-radius:50%;vertical-align:-3px">`
+  : ab.icon;
 legend.innerHTML = CHARACTERS.map(c =>
   `<div class="pu"><div class="ico">${c.accentIcon}</div><div>
     <div class="nm">${c.name} <span style="opacity:.75;text-transform:none">${c.title}</span></div>
-    <div class="ds">${c.basic.icon} <b>${c.basic.name}</b> (${c.basic.cd}s cooldown) — ${c.basic.desc}</div>
-    <div class="ds">${c.ult.icon} <b>${c.ult.name}</b> (ultimate) — ${c.ult.desc}</div>
+    <div class="ds">${abIcon(c.basic)} <b>${c.basic.name}</b> (${c.basic.cd}s cooldown) — ${c.basic.desc}</div>
+    <div class="ds">${abIcon(c.ult)} <b>${c.ult.name}</b> (ultimate) — ${c.ult.desc}</div>
   </div></div>`
 ).join('');
 

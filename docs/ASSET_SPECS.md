@@ -30,10 +30,13 @@ from disk) — use a server or the artifact for those.
 
 ## 1. IDs you can target
 
-**Button kinds** (16 in the pool, one icon each):
-`skull` · `anchor` · `coin` · `bottle` · `barrel` · `pistol` · `rudder` ·
-`balls` · `cannon` · `chest` · `hook` · `map` · `ship` · `skull_flag` ·
-`spyglass` · `swords`
+**Button kinds** (10 in the pool, one icon each):
+`skull` · `anchor` · `bottle` · `pistol` · `rudder` · `chest` · `hook` ·
+`skull_flag` · `spyglass` · `swords`
+
+Retired from the pool (files kept in `assets/icons/`): `coin`, `ship`, `map`,
+`barrel`; `balls` (the bomb) and `cannon` are **repurposed as Redbeard's
+ability icons** (basic / ultimate) via the `img` field on his kit.
 
 **Characters / avatars** (3): `redbeard` · `inkeye` · `whitedeath`
 (the avatar `id`s in `AVATARS`).

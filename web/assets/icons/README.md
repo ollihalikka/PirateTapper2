@@ -9,8 +9,12 @@ The shipped set (16 icons) are complete circular buttons — a bold mark on its
 own colored disc. Match that style for consistency.
 
 Kind IDs currently in the button pool:
-`skull`, `anchor`, `coin`, `bottle`, `barrel`, `pistol`, `rudder`, `balls`,
-`cannon`, `chest`, `hook`, `map`, `ship`, `skull_flag`, `spyglass`, `swords`.
+`skull`, `anchor`, `bottle`, `pistol`, `rudder`, `chest`, `hook`,
+`skull_flag`, `spyglass`, `swords`.
+
+Not in the pool but still used: `balls.png` (bomb) and `cannon.png` are
+Redbeard's ability icons. `coin`, `ship`, `map`, `barrel` are retired
+(files kept for later cleanup).
 
 - **Format:** PNG, square, ~256×256 px.
 - **Full-face:** the image fills the whole button (drawn at ~108% of the
