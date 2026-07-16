@@ -104,7 +104,13 @@ A character = **look + voice set + two abilities**:
 
 - **Basic** — 8 s cooldown, minor effect. First use unlocked 4 s into the
   match (prevents pre-wave sniping).
-- **Ultimate** — charged by wave clears (§5), fires at 100 charge.
+- **Ultimate** — charged by wave clears (§5), fires at 100 charge. Every
+  ult opens with a **boarding taunt**: the caster's portrait crosses onto
+  the enemy deck under a spotlight (~1.7 s: fly in, gloat with a voice
+  taunt, fly out), and only then does the effect land. The victim's board
+  is unclickable while boarded — their wave clock pauses for exactly that
+  long, so the telegraph adds drama and warning, not hidden freeze time.
+  The caster keeps playing, so firing an ult also buys tempo.
 
 | Character | Fantasy | Basic (8 s CD) | Ultimate |
 |---|---|---|---|

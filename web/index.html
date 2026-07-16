@@ -361,6 +361,8 @@ const Snd = {
   ink(){ this.tone({f:220, f2:90, dur:0.3, type:'sine', vol:0.2}); },
   clear(){ this.tone({f:660, dur:0.1, vol:0.14}); this.tone({f:990, dur:0.16, vol:0.14, delay:0.09}); },
   deny(){ this.tone({f:200, dur:0.08, type:'square', vol:0.1}); },
+  whoosh(){ this.tone({f:180, f2:720, dur:0.3, type:'sine', vol:0.12});
+            this.tone({f:90, f2:360, dur:0.3, type:'triangle', vol:0.08, delay:0.02}); },
   fanfare(){ [523,659,784,1047].forEach((f,i)=>this.tone({f, dur:0.28, type:'triangle', vol:0.2, delay:i*0.13})); },
 };
 
@@ -802,6 +804,7 @@ class Board {
     this.hpFlashUntil = 0;
     this.nextThemeAt = 0;
     this._fxLast = 0;
+    this.intrudedUntil = 0;   // enemy pirate is standing on this deck
     this.basicCdUntil = 0;
     this.ultCharge = 0;
     this.waveMistap = false;
@@ -865,6 +868,13 @@ class Board {
     return out;
   }
   update(now, dt){
+    if (now < this.intrudedUntil){
+      // an enemy ult is being delivered: the board is locked, so the wave
+      // clock politely waits — the telegraph must not be a hidden freeze
+      this.deadline += dt;
+      this.stateUntil += dt;
+      if (this.spawnNextAt !== undefined) this.spawnNextAt += dt;
+    }
     if (this.state === 'prewave' && now >= this.stateUntil) this.startWave(now);
     else if (this.state === 'forming'){
       while (this.spawned < this.wave.n && now >= this.spawnNextAt){
@@ -997,6 +1007,11 @@ class Board {
       return;
     }
     if (!this.game.running) return;
+    if (now < this.intrudedUntil){
+      this.frostTaps.push({x:lx, y:ly, t0:now});
+      Snd.deny();
+      return;
+    }
     if (now < this.frozenUntil){
       this.frostTaps.push({x:lx, y:ly, t0:now});
       Snd.deny();
@@ -1196,6 +1211,7 @@ class Game {
     this.phase = 'idle';     // idle | select | countdown | match
     this.running = false;
     this.pendingHits = [];   // scheduled cannonballs
+    this.intrusions = [];    // in-flight ult boarding taunts
     this.lastT = performance.now()/1000;
     this.resize();
     addEventListener('resize', ()=>this.resize());
@@ -1219,6 +1235,7 @@ class Game {
     this.phase = 'select';
     this.running = false;
     this.pendingHits = [];
+    this.intrusions = [];
     for (const b of this.boards){
       b.reset();
       b.setGeom(this.W, this.bH);
@@ -1306,17 +1323,20 @@ class Game {
       if (me.ultCharge < ULT_MAX){ Snd.deny(); return; }
       me.ultCharge = 0;
       play('cast', 0.9);
-      me.setMood('smile', 1.5, now);
+      Snd.whoosh();
+      me.setMood('smile', 2.2, now);
       me.setAnnounce(ch.ult.icon + ' ' + ch.ult.name.toUpperCase() + '!', '#ffd44d', now, 1.3);
-      switch (ch.id){
-        case 'redbeard': this.scheduleCannons(1 - playerIdx, 5, 8, now); break;
-        case 'frostjaw': enemy.applyIce(now, 2.6); break;
-        case 'inkeye':
-          enemy.applyGhost(now, 4);
-          enemy.applyJuggle(now);
-          enemy.applyInk(now, 2, 4);
-          break;
-      }
+      /* The boarding taunt: the caster's portrait crosses onto the enemy
+         deck, gloats for a second, and leaves — then the ult lands. The
+         victim's board is unclickable while boarded (their wave clock
+         pauses so the telegraph itself isn't a hidden freeze). */
+      const T_IN = 0.35, HOVER = 1.0, T_OUT = 0.35;
+      enemy.intrudedUntil = now + T_IN + HOVER + T_OUT;
+      enemy.setMood('shock', T_IN + HOVER + T_OUT, now);
+      enemy.setAnnounce(ch.ult.icon + ' INCOMING!', (me.theme && me.theme.glow) || me.accent,
+                        now, T_IN + HOVER, false);
+      this.intrusions.push({ caster: playerIdx, target: 1 - playerIdx, t0: now,
+        tIn: T_IN, hover: HOVER, tOut: T_OUT, taunted: false, fired: false });
     }
   }
   scheduleCannons(boardIdx, n, dmg, now){
@@ -1378,6 +1398,28 @@ class Game {
     if (this.phase === 'countdown' && now >= this.matchStartAt) this.beginMatch(now);
     if (this.running){
       for (const b of this.boards) b.update(now, dt);
+      for (let i=this.intrusions.length-1; i>=0; i--){
+        const it = this.intrusions[i];
+        const caster = this.boards[it.caster], victim = this.boards[it.target];
+        const k = now - it.t0;
+        if (!it.taunted && k >= it.tIn){
+          it.taunted = true;
+          play(caster.voice + '-smile', 1);          // the taunt, in their face
+        }
+        if (!it.fired && k >= it.tIn + it.hover + it.tOut){
+          it.fired = true;
+          switch (caster.character.id){
+            case 'redbeard': this.scheduleCannons(it.target, 5, 8, now); break;
+            case 'frostjaw': victim.applyIce(now, 2.6); break;
+            case 'inkeye':
+              victim.applyGhost(now, 4);
+              victim.applyJuggle(now);
+              victim.applyInk(now, 2, 4);
+              break;
+          }
+          this.intrusions.splice(i, 1);
+        }
+      }
       for (let i=this.pendingHits.length-1; i>=0; i--){
         const h = this.pendingHits[i];
         if (!h.fired && now >= h.fireT){       // muzzle crack at the enemy hull
@@ -1646,8 +1688,40 @@ class Game {
       g.fillText(a.text, b.W/2, ay);
       g.globalAlpha = 1;
     }
+    this.renderIntrusion(g, b, now);
     this.renderHud(g, b, now);
     this.renderAbilities(g, b, now);
+  }
+  /* The caster's portrait sails in over the victim's deck under a spotlight,
+     gloats, and sails back — the whole board dims and locks beneath them. */
+  renderIntrusion(g, b, now){
+    for (const it of this.intrusions){
+      if (it.target !== b.idx) continue;
+      const caster = this.boards[it.caster];
+      const k = now - it.t0, total = it.tIn + it.hover + it.tOut;
+      if (k < 0 || k >= total) continue;
+      const cx = b.W/2, cy = b.playTop + (b.playBot - b.playTop)*0.62, startY = -80;
+      const pr = Math.min(b.W, b.H)*0.17;
+      let y, presence;
+      if (k < it.tIn){
+        const e = 1 - (1 - k/it.tIn)**2;
+        y = startY + (cy - startY)*e; presence = e;
+      } else if (k < it.tIn + it.hover){
+        y = cy + (REDUCED_MOTION ? 0 : Math.sin(now*3)*6); presence = 1;
+      } else {
+        const e = ((k - it.tIn - it.hover)/it.tOut)**2;
+        y = cy + (startY - cy)*e; presence = 1 - e;
+      }
+      g.fillStyle = `rgba(0,0,0,${0.32*presence})`;              // spotlight dim
+      g.fillRect(0, b.hudH, b.W, b.puY - b.puR*1.5 - b.hudH);
+      const glow = (caster.theme && caster.theme.glow) || caster.accent;
+      g.strokeStyle = glow;
+      g.globalAlpha = presence*(0.6 + Math.sin(now*8)*0.25);
+      g.lineWidth = 4;
+      g.beginPath(); g.arc(cx, y, pr + 9 + Math.sin(now*8)*3, 0, TAU); g.stroke();
+      g.globalAlpha = 1;
+      drawPirate(g, caster.avatar, cx, y, pr, now, 'smile', false);
+    }
   }
   renderButton(g, b, bt, now){
     const grow = clamp((now - bt.born)/0.16, 0, 1);
