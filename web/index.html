@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pirate Tapper">
+<meta name="theme-color" content="#0a0f18">
+<title>Pirate Tapper Showdown</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --sea:#0e1622; --sea-deep:#0a0f18;
+    --gold:#e8c469; --gold-dim:#a5893f;
+    --parch:#f0e3c0; --parch-dim:#c9b98d;
+    --ember:#e0483f; --teal:#39b795;
+    --wood-dark:#17100b;
+  }
+  html,body{ height:100%; overflow:hidden; background:var(--sea-deep); }
+  body{
+    font-family:-apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color:var(--parch);
+    -webkit-user-select:none; user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #wrap{ position:fixed; inset:0; }
+  canvas{ display:block; width:100%; height:100%; touch-action:none; }
+
+  .overlay{
+    position:absolute; inset:0; z-index:10;
+    display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(ellipse at 50% 30%, #16243a 0%, var(--sea) 55%, var(--sea-deep) 100%);
+    overflow-y:auto; touch-action:pan-y;
+  }
+  .overlay[hidden]{ display:none; }
+  .panel{
+    width:min(560px, 92vw);
+    padding:clamp(20px,4vh,44px) clamp(18px,4vw,40px);
+    text-align:center;
+  }
+  .eyebrow{
+    font-family:Georgia, "Times New Roman", serif;
+    font-size:clamp(12px,1.6vh,15px); letter-spacing:.38em; text-transform:uppercase;
+    color:var(--gold-dim); margin-bottom:10px;
+  }
+  h1{
+    font-family:Georgia, "Times New Roman", serif;
+    font-weight:700; line-height:.95; text-wrap:balance;
+    font-size:clamp(38px,7.5vh,64px); letter-spacing:.02em;
+    color:var(--gold);
+    text-shadow:0 2px 0 #4a3413, 0 6px 24px rgba(232,196,105,.18);
+  }
+  h1 .vs{ display:block; font-size:.42em; letter-spacing:.5em; color:var(--parch-dim); margin:.45em 0 .15em; }
+  .rules{
+    margin:clamp(14px,3vh,26px) auto; max-width:44ch;
+    font-size:clamp(13px,1.9vh,15.5px); line-height:1.55; color:var(--parch-dim);
+    text-align:left; display:grid; gap:8px;
+  }
+  .rules b{ color:var(--parch); font-weight:600; }
+  #facesPreview{ display:block; width:100%; max-width:420px; margin:2px auto 0; height:auto; }
+  .faces-caption{
+    font-family:Georgia, serif; font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--gold-dim); margin-top:6px;
+  }
+  .legend{
+    margin:clamp(12px,2.5vh,22px) 0; border-top:1px solid rgba(232,196,105,.25); border-bottom:1px solid rgba(232,196,105,.25);
+    padding:clamp(10px,2vh,18px) 2px;
+    display:grid; grid-template-columns:1fr; gap:12px; text-align:left;
+  }
+  .legend .pu{ display:flex; gap:9px; align-items:flex-start; }
+  .legend .ico{ font-size:20px; line-height:1.15; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
+  .legend .nm{ font-family:Georgia, serif; font-size:12.5px; letter-spacing:.06em; color:var(--gold); text-transform:uppercase; }
+  .legend .ds{ font-size:11.5px; line-height:1.35; color:var(--parch-dim); }
+  .btn{
+    font-family:Georgia, "Times New Roman", serif;
+    font-size:clamp(17px,2.6vh,21px); letter-spacing:.14em; text-transform:uppercase;
+    color:#241708; background:linear-gradient(#f3d382, #d8ad4e);
+    border:1px solid #7c6127; outline:3px solid rgba(232,196,105,.35); outline-offset:3px;
+    border-radius:6px; padding:.75em 1.9em; cursor:pointer;
+    box-shadow:0 4px 0 #6b5322, 0 10px 30px rgba(0,0,0,.45);
+  }
+  .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #6b5322; }
+  .btn:focus-visible{ outline:3px solid var(--parch); }
+  .hint{ margin-top:14px; font-size:11.5px; letter-spacing:.08em; color:#6f7f92; }
+
+  #fsBtn{
+    position:fixed; right:10px; top:50%; transform:translateY(-50%);
+    z-index:5; width:38px; height:38px; border-radius:50%;
+    background:rgba(23,16,11,0.92); color:var(--gold);
+    border:1px solid rgba(232,196,105,0.5);
+    font-size:17px; line-height:1; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    touch-action:manipulation;
+  }
+  #fsBtn:active{ transform:translateY(-50%) scale(0.9); }
+  #fsBtn[hidden]{ display:none; }
+
+  #winOverlay{ background:rgba(9,7,4,0.45); }
+  #winTaunt{ font-size:clamp(15px,2.2vh,19px); }
+  #winTaunt{ margin:18px 0 26px; font-size:clamp(14px,2vh,17px); color:var(--parch-dim); font-style:italic; }
+  .flag{ font-size:clamp(40px,8vh,64px); margin-bottom:6px; filter:drop-shadow(0 4px 12px rgba(0,0,0,.6)); }
+  @media (prefers-reduced-motion: no-preference){
+    .flag{ animation:bob 2.6s ease-in-out infinite; }
+    @keyframes bob{ 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)} }
+  }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+  <button id="fsBtn" hidden aria-label="Toggle full screen">⛶</button>
+
+  <div class="overlay" id="startOverlay">
+    <div class="panel">
+      <div class="flag">🏴‍☠️</div>
+      <div class="eyebrow">A duel of memory &amp; sabotage</div>
+      <h1>Pirate Tapper<span class="vs">— showdown —</span></h1>
+      <div class="rules">
+        <div>⚓ <b>Two pirates, one screen.</b> Each of ye taps on yer own half — sit facing each other.</div>
+        <div>⚓ Buttons surface one by one — <b>watch the order they appear.</b> Then pop them in that same order. No numbers, no hints: only the faces, and yer memory.</div>
+        <div>⚓ Every correct pop cannonballs the enemy's health. Too slow to clear a wave? <b>−30.</b> Wrong button or bare deck? <b>−10.</b></div>
+        <div>⚓ <b>Choose yer pirate.</b> Each has a quick trick on a cooldown, and an <b>ultimate</b> charged by clearing waves — the faster and cleaner the clear, the more it charges.</div>
+      </div>
+      <canvas id="facesPreview"></canvas>
+      <div class="faces-caption">The marks of the deep</div>
+      <div class="legend" id="legend"></div>
+      <button class="btn" id="startBtn">Start the Showdown</button>
+      <div class="hint">Best on a touchscreen laid flat between two players · mouse works for practice · sound on!</div>
+      <div class="hint" id="iosHint" hidden>iPhone: for true full screen, open the Share menu and “Add to Home Screen”.</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="winOverlay" hidden>
+    <div class="panel">
+      <div class="flag">🏴‍☠️</div>
+      <div class="eyebrow">The powder settles…</div>
+      <div id="winTaunt"></div>
+      <button class="btn" id="againBtn">Run It Back</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============================================================
+   PIRATE TAPPER SHOWDOWN — web remake of the Unity original,
+   using the original repository's art & audio assets.
+   Architecture note (multiplayer-ready):
+   - Each Board is an independent simulation of one player's half.
+   - Everything that crosses between players (damage, power-ups)
+     flows through Game as explicit events, so a network layer can
+     later replace the direct calls with messages.
+   ============================================================ */
+
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const rand  = (a,b)=>a+Math.random()*(b-a);
+const TAU   = Math.PI*2;
+
+/* ---------------- tuning ---------------- */
+const MAX_HP = 300;
+const AUTO_CLEAR_DMG = 30;
+const WRONG_TAP_DMG = 10;
+const EMPTY_TAP_DMG = 10;
+const POWDER_SELF_DMG = 12;
+const BASIC_FIRST_CD = 4;   // basics come online shortly after the start
+const ULT_MAX = 100;
+
+/* Waves ported from the Unity GameManager.CreateWaves():
+   n buttons, seconds to form, seconds to clear, damage per pop. */
+const WAVES = [
+  {n:2,form:1.0,clear:5,dmg:5}, {n:2,form:0.8,clear:5,dmg:5},
+  {n:3,form:1.0,clear:5,dmg:5}, {n:3,form:0.8,clear:5,dmg:5}, {n:3,form:1.2,clear:5,dmg:5},
+  {n:4,form:0.8,clear:5,dmg:7}, {n:4,form:1.2,clear:5,dmg:7}, {n:4,form:1.0,clear:5,dmg:7},
+  {n:4,form:0.8,clear:5,dmg:7}, {n:4,form:1.0,clear:5,dmg:7}, {n:4,form:1.2,clear:5,dmg:7},
+  {n:5,form:1.2,clear:5,dmg:10},{n:5,form:1.2,clear:5,dmg:10},{n:5,form:1.0,clear:5,dmg:10},
+  {n:5,form:1.0,clear:5,dmg:10},{n:5,form:0.8,clear:5,dmg:10},{n:5,form:1.2,clear:5,dmg:10},
+  {n:5,form:0.8,clear:5,dmg:10},{n:5,form:1.0,clear:5,dmg:10},{n:5,form:0.8,clear:5,dmg:10},
+];
+function waveFor(i){
+  if (i < WAVES.length) return WAVES[i];
+  const k = i - WAVES.length; // endless overtime: tighter and meaner
+  return { n:6, form:0.7, clear:Math.max(3.2, 4.6 - k*0.15), dmg:12 };
+}
+
+/* Character kits: each pirate has a cooldown basic and an ultimate
+   charged by clearing waves (faster + cleaner = more charge). */
+const CHARACTERS = [
+  { id:'redbeard', name:'Redbeard', title:'the Cannoneer', avatar:0, accentIcon:'💣',
+    theme:{ glow:'#ff7a30', particle:'ember', deck:null },   // the default ship
+    basic:{ icon:'💣', img:'icons/balls.png', name:'Pot Shot', cd:8,
+            desc:'Lob a cannonball at the enemy deck (6 damage).' },
+    ult:  { icon:'💥', img:'icons/cannon.png', name:'Broadside',
+            desc:'Rake the enemy deck with five cannonballs (8 damage each).' } },
+  { id:'frostjaw', name:'White Death', title:'the Iceberg', avatar:2, accentIcon:'❄️',
+    theme:{ glow:'#a8dcff', particle:'flake', deck:'snow' }, // frost-bitten deck
+    basic:{ icon:'❄️', name:'Cold Snap', cd:8,
+            desc:'Flash-freeze the enemy board for 0.8s.' },
+    ult:  { icon:'🧊', name:'Deep Freeze',
+            desc:'Freeze the enemy board solid for 2.6s — their wave timer keeps burning.' } },
+  { id:'inkeye', name:'Inkeye', title:'the Cursed', avatar:1, accentIcon:'🦑',
+    theme:{ glow:'#9a6ec9', particle:'wisp', deck:'dark' },  // worn, cursed wood
+    basic:{ icon:'🦑', name:'Ink Spit', cd:8,
+            desc:'Splat one ink blob over the enemy board for 2.5s.' },
+    ult:  { icon:'👻', name:'Kraken’s Curse',
+            desc:'4 seconds of chaos: faces wiped, buttons juggled, ink everywhere.' } },
+];
+
+const PLAYER_ACCENT = ['#39b795','#e0483f'];
+const PLAYER_NAME = ['PLAYER 1','PLAYER 2'];
+
+/* ---------------- assets ----------------
+   Optional art overrides. Drop a PNG into web/assets/ and it replaces the
+   matching canvas drawing; a missing file just falls back to the procedural
+   art, so the game never blocks on assets. Full guide: docs/ASSET_SPECS.md.
+
+     assets/planks.jpg                deck background (already shipped)
+     assets/icons/<kindId>.png        button mark   (transparent, ~256px square)
+     assets/characters/<charId>.png   pirate portrait (square)
+     assets/characters/<charId>.json  optional sprite-sheet manifest (animation)
+
+   kindIds: skull anchor coin bottle barrel pistol rudder balls
+            cannon chest hook map ship skull_flag spyglass swords
+   charIds: redbeard inkeye whitedeath
+   The artifact build inlines every file under assets/ (recursively) as a
+   data URI, keyed by its path relative to assets/. */
+const ASSET_INLINE = null;
+const assetUrl = f => (ASSET_INLINE && ASSET_INLINE[f]) || ('assets/' + f);
+
+const IMG = { planks:null, coin:null };   // logical key -> Image | null
+const SHEETS = {};                        // charId -> { img, meta }
+
+function loadImage(key, file){
+  return new Promise(res => {
+    const im = new Image();
+    im.onload = () => { IMG[key] = im; res(true); };
+    im.onerror = () => { IMG[key] = null; res(false); };
+    im.src = assetUrl(file);
+  });
+}
+function loadJSON(file){
+  // <img> loads fine under file://, but fetch() is CORS-blocked there, so
+  // sprite sheets need HTTP or the inlined artifact; single portraits work
+  // everywhere. Missing/invalid JSON just means "no animation".
+  return fetch(assetUrl(file)).then(r => r.ok ? r.json() : null).catch(() => null);
+}
+// In the inlined artifact, only load files that were actually bundled, so a
+// published build never 404s for optional art. In the repo (ASSET_INLINE
+// null) attempt everything, so dropping a new file in + reload just works.
+const assetExists = f => ASSET_INLINE ? Object.prototype.hasOwnProperty.call(ASSET_INLINE, f) : true;
+async function loadAssets(done){
+  const jobs = [];
+  const tryImage = (key, file) => { if (assetExists(file)) jobs.push(loadImage(key, file)); };
+  tryImage('planks','planks.jpg');
+  tryImage('coin','coin.png');
+  for (const k of BUTTON_KINDS) tryImage('icon:'+k.id, 'icons/'+k.id+'.png');
+  for (const c of CHARACTERS)
+    for (const ab of [c.basic, c.ult])
+      if (ab.img) tryImage('img:'+ab.img, ab.img);   // ability icon art
+  for (const av of AVATARS){
+    const png = 'characters/'+av.id+'.png';
+    if (!assetExists(png)) continue;
+    jobs.push(loadImage('char:'+av.id, png).then(async ok => {
+      if (!ok) return;
+      const metaFile = 'characters/'+av.id+'.json';
+      // Sprite-sheet JSON needs fetch, which is blocked under file:// — skip
+      // the probe there (sheets require HTTP or the inlined artifact anyway).
+      if (location.protocol === 'file:' && !ASSET_INLINE) return;
+      const meta = assetExists(metaFile) ? await loadJSON(metaFile) : null;
+      if (meta) SHEETS[av.id] = { img: IMG['char:'+av.id], meta };
+    }));
+  }
+  await Promise.all(jobs);
+  done && done();
+}
+
+/* Sound effects: original repo recordings, played via pooled <audio>. */
+const SFX_FILES = {
+  pop:  ['pop1.mp3','pop2.mp3'],
+  wrong:['wrong.mp3'],
+  boom: ['boom1.mp3','boom2.mp3','boom3.mp3','boom4.mp3'],
+  click:['click1.mp3'],
+  cast: ['click2.mp3'],
+};
+/* Voice sets: a character's `voice` field selects one. Add a new voice by
+   adding an id here and dropping assets/<id>-<mood><take>.mp3 files. */
+const VOICES = ['p1','p2'];
+const VOICE_MOODS = ['angry','peek','shock','smile'];
+for (const p of VOICES)
+  for (const e of VOICE_MOODS)
+    SFX_FILES[`${p}-${e}`] = [`${p}-${e}1.mp3`, `${p}-${e}2.mp3`];
+
+const sfxCache = {};
+function play(name, vol=1, rate=1){
+  const files = SFX_FILES[name];
+  if (!files) return;
+  const f = files[Math.floor(Math.random()*files.length)];
+  let base = sfxCache[f];
+  if (!base){ base = new Audio(assetUrl(f)); base.preload = 'auto'; sfxCache[f] = base; }
+  const el = base.cloneNode();
+  el.volume = clamp(vol, 0, 1);
+  try { el.playbackRate = rate; } catch(e){}
+  el.play().catch(()=>{});
+}
+function preloadSfx(){
+  for (const files of Object.values(SFX_FILES)) for (const f of files){
+    if (!sfxCache[f]){ const a = new Audio(assetUrl(f)); a.preload='auto'; sfxCache[f]=a; }
+  }
+}
+
+/* ---------------- character event sounds ----------------
+   Drop-in voice/SFX slots per character. Add a file at
+   assets/voices/<avatarId>/<slot>.mp3 and it plays automatically;
+   missing slots fall back to the current sounds. avatarIds:
+   redbeard, inkeye, whitedeath. Slots:
+     select.mp3                 picked on the select screen
+     start.mp3                  match begins (after the VS splash)
+     hurt1.mp3 … hurt5.mp3      random one when the character loses health
+     basic_voice.mp3            basic ability voice line
+     basic_fx.mp3               basic ability sound effect (plays with voice)
+     taunt.mp3                  the ult boarding gloat
+     victory.mp3 / defeat.mp3   match end */
+const CHAR_SOUND_SLOTS = {
+  select: ['select.mp3'],
+  start:  ['start.mp3'],
+  hurt:   ['hurt1.mp3','hurt2.mp3','hurt3.mp3','hurt4.mp3','hurt5.mp3'],
+  basic_voice: ['basic_voice.mp3'],
+  basic_fx:    ['basic_fx.mp3'],
+  taunt:  ['taunt.mp3'],
+  victory:['victory.mp3'],
+  defeat: ['defeat.mp3'],
+};
+const charSfx = {};   // 'voices/<id>/<file>' -> { el, ok: true|false|null }
+function probeCharSounds(){
+  for (const av of AVATARS){
+    for (const files of Object.values(CHAR_SOUND_SLOTS)){
+      for (const f of files){
+        const path = 'voices/' + av.id + '/' + f;
+        if (!assetExists(path)){ charSfx[path] = { ok:false }; continue; }
+        const el = new Audio(assetUrl(path));
+        const entry = charSfx[path] = { el, ok:null };
+        el.addEventListener('canplaythrough', ()=>{ entry.ok = true; }, { once:true });
+        el.addEventListener('error', ()=>{ entry.ok = false; }, { once:true });
+        el.preload = 'auto';
+      }
+    }
+  }
+}
+/* Play a character sound slot; returns false if no file exists so the
+   caller can fall back to the stock sound. Multi-take slots (hurt)
+   pick randomly among the takes that loaded. */
+function playCharSound(av, slot, vol=1){
+  const files = CHAR_SOUND_SLOTS[slot];
+  if (!files) return false;
+  const avail = files
+    .map(f => charSfx['voices/' + av.id + '/' + f])
+    .filter(e => e && e.ok && e.el);
+  if (!avail.length) return false;
+  const el = avail[Math.floor(Math.random()*avail.length)].el.cloneNode();
+  el.volume = clamp(vol, 0, 1);
+  el.play().catch(()=>{});
+  return true;
+}
+
+/* Music: the two repo tracks alternating forever, exactly like the
+   Unity MusicPlayer, over a low sea-waves ambience. */
+const Music = {
+  started:false, i:0, el:null, amb:null,
+  tracks:['music-tavern.mp3','music-battle.mp3'],
+  start(){
+    if (this.started) return;
+    this.started = true;
+    this.el = new Audio(assetUrl(this.tracks[0]));
+    this.el.volume = 0.5;
+    this.el.addEventListener('ended', ()=>{
+      this.i = 1 - this.i;
+      this.el.src = assetUrl(this.tracks[this.i]);
+      this.el.play().catch(()=>{});
+    });
+    this.el.play().catch(()=>{});
+    this.amb = new Audio(assetUrl('sea-waves.mp3'));
+    this.amb.loop = true; this.amb.volume = 0.22;
+    this.amb.play().catch(()=>{});
+  }
+};
+
+/* Synth accents for effects that have no repo recording. */
+const Snd = {
+  ctx:null,
+  ensure(){
+    if (!this.ctx){
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  },
+  tone(o){
+    if (!this.ctx) return;
+    const {f=440,f2=0,dur=0.15,type='sine',vol=0.2,delay=0} = o;
+    const t0 = this.ctx.currentTime + delay;
+    const osc = this.ctx.createOscillator(), g = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f, t0);
+    if (f2) osc.frequency.exponentialRampToValueAtTime(Math.max(20,f2), t0+dur);
+    g.gain.setValueAtTime(0, t0);
+    g.gain.linearRampToValueAtTime(vol, t0+0.006);
+    g.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+    osc.connect(g).connect(this.ctx.destination);
+    osc.start(t0); osc.stop(t0+dur+0.05);
+  },
+  freeze(){ this.tone({f:1150, f2:2300, dur:0.3, type:'triangle', vol:0.14});
+            this.tone({f:1720, f2:3400, dur:0.35, type:'sine', vol:0.09, delay:0.06}); },
+  ghost(){ this.tone({f:520, f2:240, dur:0.55, type:'triangle', vol:0.13});
+           this.tone({f:780, f2:390, dur:0.55, type:'sine', vol:0.07, delay:0.05}); },
+  juggle(){ [480,640,560,760].forEach((f,i)=>this.tone({f, dur:0.07, type:'square', vol:0.09, delay:i*0.07})); },
+  ink(){ this.tone({f:220, f2:90, dur:0.3, type:'sine', vol:0.2}); },
+  clear(){ this.tone({f:660, dur:0.1, vol:0.14}); this.tone({f:990, dur:0.16, vol:0.14, delay:0.09}); },
+  deny(){ this.tone({f:200, dur:0.08, type:'square', vol:0.1}); },
+  whoosh(){ this.tone({f:180, f2:720, dur:0.3, type:'sine', vol:0.12});
+            this.tone({f:90, f2:360, dur:0.3, type:'triangle', vol:0.08, delay:0.02}); },
+  fanfare(){ [523,659,784,1047].forEach((f,i)=>this.tone({f, dur:0.28, type:'triangle', vol:0.2, delay:i*0.13})); },
+};
+
+const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------------- the eight button faces ----------------
+   Same set as the Unity prefabs (Poppable_Buttons): skull, anchor,
+   coin, bottle, dynamite, pistol, rudder, cannonballs. Every button
+   is a disc of the same deck wood (PlanksDiffuse) with its mark
+   painted as large as the face allows — the mark IS the memory hook,
+   so it owns the button. `disc` is the mark's signature color, used
+   for pop particles. Coordinates are in units of the disc radius;
+   marks reach ±0.78. */
+const BUTTON_KINDS = [
+  { id:'skull',    disc:'#f0ead8', bg:'#3a4660', draw(g,x,y,s){
+      const bone='#f0ead8', hole='#3a4660';
+      g.fillStyle=bone;
+      g.beginPath(); g.arc(x, y-0.14*s, 0.58*s, 0, TAU); g.fill();           // cranium
+      g.fillRect(x-0.36*s, y+0.1*s, 0.72*s, 0.5*s);                          // jaw
+      g.fillStyle=hole;
+      g.beginPath(); g.arc(x-0.24*s, y-0.2*s, 0.16*s, 0, TAU); g.fill();     // eyes
+      g.beginPath(); g.arc(x+0.24*s, y-0.2*s, 0.16*s, 0, TAU); g.fill();
+      g.beginPath();                                                          // nose
+      g.moveTo(x, y+0.02*s); g.lineTo(x-0.09*s, y+0.2*s); g.lineTo(x+0.09*s, y+0.2*s);
+      g.closePath(); g.fill();
+      g.strokeStyle=hole; g.lineWidth=0.06*s;                                 // teeth
+      for (const dx of [-0.18,0,0.18]){
+        g.beginPath(); g.moveTo(x+dx*s, y+0.34*s); g.lineTo(x+dx*s, y+0.6*s); g.stroke();
+      }
+  }},
+  { id:'anchor',   disc:'#0e4a40', bg:'#e3cf96', draw(g,x,y,s){
+      const ink='#0e4a40';
+      g.strokeStyle=ink; g.lineWidth=0.17*s; g.lineCap='round';
+      g.beginPath(); g.arc(x, y-0.58*s, 0.17*s, 0, TAU); g.stroke();          // ring
+      g.beginPath(); g.moveTo(x, y-0.4*s); g.lineTo(x, y+0.55*s); g.stroke(); // shaft
+      g.beginPath(); g.moveTo(x-0.36*s, y-0.2*s); g.lineTo(x+0.36*s, y-0.2*s); g.stroke(); // crossbar
+      g.beginPath(); g.arc(x, y+0.05*s, 0.58*s, Math.PI*0.12, Math.PI*0.88); g.stroke();   // arms
+      g.fillStyle=ink;                                                        // flukes
+      g.beginPath(); g.moveTo(x-0.55*s, y+0.32*s); g.lineTo(x-0.78*s, y+0.12*s); g.lineTo(x-0.4*s, y+0.05*s); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(x+0.55*s, y+0.32*s); g.lineTo(x+0.78*s, y+0.12*s); g.lineTo(x+0.4*s, y+0.05*s); g.closePath(); g.fill();
+  }},
+  { id:'bottle',   disc:'#2f6326', bg:'#cf9440', draw(g,x,y,s){
+      g.fillStyle='#2f6326';
+      g.fillRect(x-0.12*s, y-0.72*s, 0.24*s, 0.36*s);                         // neck
+      g.beginPath();                                                          // body
+      g.moveTo(x-0.12*s, y-0.38*s);
+      g.quadraticCurveTo(x-0.43*s, y-0.25*s, x-0.43*s, y+0.06*s);
+      g.lineTo(x-0.43*s, y+0.68*s); g.lineTo(x+0.43*s, y+0.68*s);
+      g.lineTo(x+0.43*s, y+0.06*s);
+      g.quadraticCurveTo(x+0.43*s, y-0.25*s, x+0.12*s, y-0.38*s);
+      g.closePath(); g.fill();
+      g.fillStyle='#c9a53a';                                                  // cork
+      g.fillRect(x-0.12*s, y-0.8*s, 0.24*s, 0.1*s);
+      g.fillStyle='#e8dcb8';                                                  // label
+      g.fillRect(x-0.32*s, y+0.06*s, 0.64*s, 0.42*s);
+      g.fillStyle='#4a3520';
+      g.font = `700 ${Math.round(0.3*s)}px Georgia, serif`;
+      g.textAlign='center'; g.textBaseline='middle';
+      g.fillText('XXX', x, y+0.28*s);
+  }},
+  { id:'pistol',   disc:'#26292e', bg:'#b0616e', draw(g,x,y,s){
+      const metal='#26292e', grip='#4a2f16';
+      g.fillStyle=metal;
+      g.fillRect(x-0.72*s, y-0.24*s, 1.12*s, 0.24*s);                         // barrel
+      g.fillRect(x-0.78*s, y-0.3*s, 0.13*s, 0.34*s);                          // muzzle
+      g.fillStyle=grip;                                                       // grip
+      g.beginPath();
+      g.moveTo(x+0.36*s, y-0.24*s);
+      g.lineTo(x+0.62*s, y-0.24*s);
+      g.lineTo(x+0.42*s, y+0.55*s);
+      g.lineTo(x+0.13*s, y+0.55*s);
+      g.closePath(); g.fill();
+      g.strokeStyle=metal; g.lineWidth=0.09*s;                                // trigger guard
+      g.beginPath(); g.arc(x+0.05*s, y+0.2*s, 0.17*s, -0.3, Math.PI+0.3); g.stroke();
+      g.fillStyle=metal;                                                      // hammer
+      g.fillRect(x+0.22*s, y-0.5*s, 0.13*s, 0.28*s);
+  }},
+  { id:'rudder',   disc:'#3a2410', bg:'#7d9ec4', draw(g,x,y,s){
+      const ink='#3a2410';
+      g.strokeStyle=ink; g.lineWidth=0.14*s; g.lineCap='round';
+      g.beginPath(); g.arc(x, y, 0.55*s, 0, TAU); g.stroke();                 // rim
+      for (let i=0;i<8;i++){                                                  // spokes + handles
+        const a = i*TAU/8;
+        g.beginPath();
+        g.moveTo(x, y);
+        g.lineTo(x+Math.cos(a)*0.78*s, y+Math.sin(a)*0.78*s);
+        g.stroke();
+      }
+      g.fillStyle=ink;
+      g.beginPath(); g.arc(x, y, 0.2*s, 0, TAU); g.fill();                    // hub
+  }},
+  { id:'chest',     bg:'#c9432f', draw:genericMark },
+  { id:'hook',      bg:'#e0b52b', draw:genericMark },
+  { id:'skull_flag',bg:'#d24b8f', draw:genericMark },
+  { id:'spyglass',  bg:'#c05a3a', draw:genericMark },
+  { id:'swords',    bg:'#7a3fb0', draw:genericMark },
+];
+// Fallback mark for icon-art kinds when their PNG is unavailable: a simple
+// engraved ring so the button still reads as distinct (its bg color differs).
+function genericMark(g, x, y, r){
+  g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = r*0.1;
+  g.beginPath(); g.arc(x, y, r*0.42, 0, TAU); g.stroke();
+  g.fillStyle = 'rgba(0,0,0,0.3)';
+  g.beginPath(); g.arc(x, y, r*0.16, 0, TAU); g.fill();
+}
+
+/* Every button is sawn from the same tree: a disc of the deck-plank
+   texture with a carved rim. `seed` offsets the grain per button. */
+function drawButtonBase(g, x, y, r, seed=0){
+  if (IMG.planks){
+    g.save();
+    g.beginPath(); g.arc(x, y, r, 0, TAU); g.clip();
+    const sw = 220, sx = 60 + (seed*137)%700, sy = 60 + (seed*211)%700;
+    g.drawImage(IMG.planks, sx, sy, sw, sw, x-r, y-r, r*2, r*2);
+    g.fillStyle = 'rgba(255,214,140,0.28)';   // freshly sanded, lighter than the deck
+    g.fillRect(x-r, y-r, r*2, r*2);
+    g.restore();
+  } else {
+    g.fillStyle = '#a3702f';
+    g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+  }
+  g.strokeStyle = 'rgba(46,26,9,0.85)'; g.lineWidth = r*0.1;   // carved rim
+  g.beginPath(); g.arc(x, y, r*0.93, 0, TAU); g.stroke();
+  g.strokeStyle = 'rgba(255,235,190,0.3)'; g.lineWidth = r*0.05;
+  g.beginPath(); g.arc(x, y, r*0.84, 0, TAU); g.stroke();
+}
+
+/* Full button face: wood base, then the kind's painted disc (every
+   kind gets its own hue — a second memory anchor besides the mark),
+   then the mark itself. */
+function drawButtonFace(g, x, y, r, kind, seed=0){
+  const icon = IMG['icon:'+kind.id];
+  if (icon){
+    // The supplied icons are complete circular buttons (baked-in background),
+    // so they fill the whole face — no wooden disc or painted color beneath.
+    // Clip to a clean circle (hides rough PNG edges) then ring it in gold,
+    // where the carved wooden frame used to sit.
+    const s = r*2.18;
+    g.save();
+    g.beginPath(); g.arc(x, y, r*0.99, 0, TAU); g.clip();
+    g.drawImage(icon, x-s/2, y-s/2, s, s);
+    g.restore();
+    const gold = g.createLinearGradient(x-r, y-r, x+r, y+r);
+    gold.addColorStop(0, '#f7e08f'); gold.addColorStop(0.5, '#c99a3e'); gold.addColorStop(1, '#7d5a1e');
+    g.strokeStyle = gold; g.lineWidth = r*0.15;
+    g.beginPath(); g.arc(x, y, r*0.92, 0, TAU); g.stroke();           // gold band
+    g.strokeStyle = 'rgba(40,24,8,0.75)'; g.lineWidth = r*0.05;
+    g.beginPath(); g.arc(x, y, r*0.995, 0, TAU); g.stroke();          // dark outer edge
+    g.strokeStyle = 'rgba(255,244,205,0.45)'; g.lineWidth = r*0.03;
+    g.beginPath(); g.arc(x, y, r*0.845, 0, TAU); g.stroke();          // inner highlight
+    return;
+  }
+  // Procedural fallback: wooden disc + the kind's painted color + its mark.
+  drawButtonBase(g, x, y, r, seed);
+  g.fillStyle = kind.bg;
+  g.beginPath(); g.arc(x, y, r*0.8, 0, TAU); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,0.22)'; g.lineWidth = r*0.05;
+  g.beginPath(); g.arc(x, y, r*0.77, 0, TAU); g.stroke();
+  kind.draw(g, x, y, r);
+}
+
+/* Fast comic-book explosion: smoke halo, fireball, hot core, radiating
+   spikes — drawn from t 0..1 and gone in a blink. */
+function drawBoom(g, x, y, s, t){
+  const ease = 1 - (1-t)*(1-t);
+  const R = s*(0.4 + ease*1.4), a = 1 - t;
+  g.globalAlpha = a*0.5; g.fillStyle = '#3a2a1e';
+  g.beginPath(); g.arc(x, y, R*1.3, 0, TAU); g.fill();
+  g.globalAlpha = a*0.9; g.fillStyle = '#ff8a2b';
+  g.beginPath(); g.arc(x, y, R, 0, TAU); g.fill();
+  g.globalAlpha = a; g.fillStyle = '#ffd44d';
+  g.beginPath(); g.arc(x, y, R*0.62, 0, TAU); g.fill();
+  g.fillStyle = '#fff8e0';
+  g.beginPath(); g.arc(x, y, R*0.3, 0, TAU); g.fill();
+  g.strokeStyle = `rgba(255,220,120,${a})`; g.lineWidth = s*0.1; g.lineCap = 'round';
+  for (let i=0;i<8;i++){
+    const ang = i*TAU/8 + t*0.6;
+    g.beginPath();
+    g.moveTo(x+Math.cos(ang)*R*1.05, y+Math.sin(ang)*R*1.05);
+    g.lineTo(x+Math.cos(ang)*R*(1.3+ease*0.35), y+Math.sin(ang)*R*(1.3+ease*0.35));
+    g.stroke();
+  }
+  g.globalAlpha = 1;
+}
+
+/* Ability icon: circular image art when present, emoji fallback. */
+function drawAbilityIcon(g, ab, x, y, r){
+  const img = ab.img && IMG['img:'+ab.img];
+  if (img){
+    g.save();
+    g.beginPath(); g.arc(x, y, r, 0, TAU); g.clip();
+    g.drawImage(img, x-r*1.06, y-r*1.06, r*2.12, r*2.12);
+    g.restore();
+  } else {
+    g.font = `${Math.round(r*1.3)}px serif`;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(ab.icon, x, y+1);
+  }
+}
+
+function shuffled(arr){
+  const a = arr.slice();
+  for (let i=a.length-1; i>0; i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+/* ---------------- pirate avatars ----------------
+   Data-driven characters: each avatar bundles its look and its voice
+   set, so new purchasable avatars later are just new entries here
+   (and per-avatar power-up loadouts can hook in the same way).
+   Drawn as animated canvas portraits that react to the board. */
+const AVATARS = [
+  { id:'redbeard', voice:'p1', skin:'#e2a878', beard:'#8a3f1a', brow:'#5c2d14',
+    hat:'bandana', hatColor:'#b93d32', hatDot:'#f0e3c0', eyepatch:false, earring:true },
+  { id:'inkeye', voice:'p2', skin:'#c98e5f', beard:'#332a21', brow:'#1c1610',
+    hat:'tricorn', hatColor:'#26262e', hatTrim:'#9a6ec9', eyepatch:true, earring:false },
+  { id:'whitedeath', voice:'p2', skin:'#cfa27e', beard:'#d8dde2', brow:'#b8c4cc',
+    hat:'bandana', hatColor:'#5f9cbf', hatDot:'#eef6fa', eyepatch:false, earring:false },
+];
+
+function drawPirate(g, av, cx, cy, r, now, mood, blink){
+  const ph = AVATARS.indexOf(av);
+  cy += Math.sin(now*2 + ph*2.6)*r*0.05;                       // idle bob
+  if (mood === 'shock' && !REDUCED_MOTION) cx += Math.sin(now*32)*r*0.03;
+  if (mood === 'angry' && !REDUCED_MOTION) cy += Math.sin(now*18)*r*0.02;
+  // art override: a custom portrait (static PNG) or sprite sheet (animated
+  // per mood) replaces the drawn pirate, clipped into the portrait circle
+  const sheet = SHEETS[av.id], portrait = IMG['char:'+av.id];
+  if (sheet || portrait){
+    g.save();
+    g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.clip();
+    if (sheet){
+      const m = sheet.meta, fw = m.frameW, fh = m.frameH, fps = m.fps || 6;
+      let md = (m.moods && m.moods[mood]) ? mood : 'idle';
+      if (blink && mood === 'idle' && m.moods && m.moods.blink) md = 'blink';
+      const def = (m.moods && m.moods[md]) || { row:0, frames:1 };
+      const n = def.frames || 1;
+      const fr = n > 1 ? Math.floor(now*fps) % n : 0;
+      g.drawImage(sheet.img, ((def.col||0)+fr)*fw, (def.row||0)*fh, fw, fh, cx-r, cy-r, r*2, r*2);
+    } else {
+      g.drawImage(portrait, cx-r, cy-r, r*2, r*2);             // static portrait
+    }
+    g.restore();
+    g.strokeStyle = 'rgba(232,196,105,0.5)'; g.lineWidth = 1.5;
+    g.beginPath(); g.arc(cx, cy, r+2, 0, TAU); g.stroke();
+    return;
+  }
+  // head
+  g.fillStyle = av.skin;
+  g.beginPath(); g.arc(cx, cy, r, 0, TAU); g.fill();
+  // beard over the lower face, cheeks left bare
+  g.fillStyle = av.beard;
+  g.beginPath(); g.arc(cx, cy + r*0.12, r*0.94, 0.15, Math.PI - 0.15); g.fill();
+  // mouth
+  const my = cy + r*0.42;
+  if (mood === 'smile'){
+    g.fillStyle = '#fff';
+    g.beginPath(); g.arc(cx, my - r*0.08, r*0.3, 0, Math.PI); g.fill();
+  } else if (mood === 'angry'){
+    g.fillStyle = '#fff';
+    g.fillRect(cx - r*0.26, my - r*0.12, r*0.52, r*0.18);
+    g.strokeStyle = av.beard; g.lineWidth = r*0.05;
+    for (const dx of [-0.13, 0, 0.13]){
+      g.beginPath(); g.moveTo(cx + dx*r, my - r*0.12); g.lineTo(cx + dx*r, my + r*0.06); g.stroke();
+    }
+  } else if (mood === 'shock'){
+    g.fillStyle = '#26160e';
+    g.beginPath(); g.ellipse(cx, my - r*0.02, r*0.16, r*0.22, 0, 0, TAU); g.fill();
+  } else if (mood === 'peek'){
+    g.strokeStyle = '#26160e'; g.lineWidth = r*0.07; g.lineCap='round';
+    g.beginPath(); g.moveTo(cx - r*0.05, my); g.lineTo(cx + r*0.25, my - r*0.08); g.stroke();
+  } else {
+    g.strokeStyle = '#26160e'; g.lineWidth = r*0.07; g.lineCap='round';
+    g.beginPath();
+    g.moveTo(cx - r*0.18, my - r*0.02);
+    g.quadraticCurveTo(cx, my + r*0.08, cx + r*0.18, my - r*0.02);
+    g.stroke();
+  }
+  // eyes
+  const ey = cy - r*0.14, ex = r*0.34, er = r*0.15;
+  for (const side of [-1, 1]){
+    const x = cx + side*ex;
+    if (av.eyepatch && side === -1){
+      g.strokeStyle = '#1a1512'; g.lineWidth = r*0.09;
+      g.beginPath(); g.moveTo(cx - r*0.97, ey - r*0.24); g.lineTo(cx + r*0.25, ey - r*0.42); g.stroke();
+      g.fillStyle = '#1a1512';
+      g.beginPath(); g.arc(x, ey, er*1.3, 0, TAU); g.fill();
+      continue;
+    }
+    if ((blink && mood !== 'shock') || (mood === 'peek' && side === -1)){
+      g.strokeStyle = '#5c3a20'; g.lineWidth = r*0.06; g.lineCap='round';
+      g.beginPath(); g.moveTo(x - er, ey); g.lineTo(x + er, ey); g.stroke();
+      continue;
+    }
+    g.fillStyle = '#fff';
+    const wr = mood === 'shock' ? er*1.35 : er;
+    g.beginPath(); g.arc(x, ey, wr, 0, TAU); g.fill();
+    g.fillStyle = '#26160e';
+    const pr = mood === 'shock' ? er*0.4 : er*0.55;
+    g.beginPath(); g.arc(x, ey + (mood === 'shock' ? 0 : er*0.15), pr, 0, TAU); g.fill();
+    if (mood === 'angry'){ // half-lidded glare
+      g.fillStyle = av.skin;
+      g.fillRect(x - wr, ey - wr, wr*2, wr*0.75);
+    }
+  }
+  // brows
+  g.strokeStyle = av.brow; g.lineWidth = r*0.09; g.lineCap = 'round';
+  const by = ey - er*1.35;
+  const tilt = mood === 'angry' ? r*0.13 : (mood === 'shock' || mood === 'smile') ? -r*0.05 : 0;
+  for (const side of [-1, 1]){
+    if (av.eyepatch && side === -1) continue;
+    const x = cx + side*ex;
+    g.beginPath();
+    g.moveTo(x - er, by + (side === 1 ? tilt : -tilt));
+    g.lineTo(x + er, by + (side === 1 ? -tilt : tilt));
+    g.stroke();
+  }
+  // hat
+  if (av.hat === 'bandana'){
+    g.fillStyle = av.hatColor;
+    g.beginPath(); g.arc(cx, cy - r*0.38, r*0.97, Math.PI, 0); g.fill();
+    g.fillRect(cx - r*0.97, cy - r*0.54, r*1.94, r*0.17);
+    g.beginPath(); g.arc(cx + r*0.9, cy - r*0.42, r*0.17, 0, TAU); g.fill();  // knot
+    g.beginPath();                                                            // tails
+    g.moveTo(cx + r*0.93, cy - r*0.38);
+    g.lineTo(cx + r*1.25, cy - r*0.1); g.lineTo(cx + r*0.93, cy - r*0.14);
+    g.closePath(); g.fill();
+    g.fillStyle = av.hatDot;
+    for (const [dx,dy] of [[-0.5,-0.82],[0,-1.05],[0.5,-0.82],[-0.22,-0.68],[0.26,-0.66]]){
+      g.beginPath(); g.arc(cx + dx*r, cy + dy*r, r*0.06, 0, TAU); g.fill();
+    }
+  } else { // tricorn
+    g.fillStyle = av.hatColor;
+    g.beginPath(); g.ellipse(cx, cy - r*0.58, r*1.12, r*0.2, 0, 0, TAU); g.fill();
+    g.beginPath(); g.arc(cx, cy - r*0.6, r*0.7, Math.PI, 0); g.fill();
+    g.strokeStyle = av.hatTrim; g.lineWidth = r*0.05;
+    g.beginPath(); g.ellipse(cx, cy - r*0.58, r*1.12, r*0.2, 0, Math.PI*0.06, Math.PI*0.94); g.stroke();
+    g.fillStyle = '#f0ead8';                                                  // emblem
+    g.beginPath(); g.arc(cx, cy - r*0.88, r*0.11, 0, TAU); g.fill();
+    g.fillStyle = av.hatColor;
+    g.beginPath(); g.arc(cx - r*0.04, cy - r*0.9, r*0.03, 0, TAU); g.fill();
+    g.beginPath(); g.arc(cx + r*0.04, cy - r*0.9, r*0.03, 0, TAU); g.fill();
+  }
+  // earring
+  if (av.earring){
+    g.strokeStyle = '#e8c469'; g.lineWidth = r*0.06;
+    g.beginPath(); g.arc(cx - r*0.92, cy + r*0.3, r*0.14, 0, TAU); g.stroke();
+  }
+  // portrait ring
+  g.strokeStyle = 'rgba(232,196,105,0.5)'; g.lineWidth = 1.5;
+  g.beginPath(); g.arc(cx, cy, r + 2, 0, TAU); g.stroke();
+}
+
+/* ---------------- one player's half ---------------- */
+class Board {
+  constructor(idx, game){
+    this.idx = idx;           // 0 = bottom player, 1 = top player
+    this.game = game;
+    this.accent = PLAYER_ACCENT[idx];
+    this.avatar = AVATARS[idx];        // placeholder until a character is chosen
+    this.voice = this.avatar.voice;    // the avatar owns the voice set
+    this.reset();
+  }
+  reset(){
+    this.hp = MAX_HP;
+    this.waveIndex = 0;
+    this.state = 'idle';      // idle | prewave | forming | active | failwait
+    this.stateUntil = 0;
+    this.buttons = [];
+    this.nextOrd = 0;
+    this.wave = null;
+    this.deadline = 0;
+    this.frozenUntil = 0;
+    this.ghostUntil = 0;
+    this.inkBlobs = [];
+    this.particles = [];
+    this.floats = [];
+    this.announce = null;
+    this.shakeUntil = 0;
+    this.frostTaps = [];
+    this.nextGruntAt = 0;
+    this.mood = 'idle';
+    this.moodUntil = 0;
+    this.blinkUntil = 0;
+    this.nextBlink = 0;
+    this.charIdx = null;      // set during the select phase
+    this.character = null;
+    this.theme = null;        // character deck theme (glow + ambient particles)
+    this.hpShown = MAX_HP;    // trails hp for the red "ghost" bar segment
+    this.hpFlashUntil = 0;
+    this.nextThemeAt = 0;
+    this._fxLast = 0;
+    this.intrudedUntil = 0;   // enemy pirate is standing on this deck
+    this.hurtSoundCdUntil = 0;
+    this.basicCdUntil = 0;
+    this.ultCharge = 0;
+    this.waveMistap = false;
+    this.waveActivatedAt = 0;
+  }
+  setMood(m, secs, now){ this.mood = m; this.moodUntil = now + secs; }
+  moodNow(now){ return now < this.moodUntil ? this.mood : 'idle'; }
+  setGeom(W, H){
+    const old = this.W ? {W:this.W, H:this.H} : null;
+    this.W = W; this.H = H;
+    const m = Math.min(W, H);
+    this.R = clamp(m*0.085, 22, 46);            // button radius
+    this.hudH = clamp(H*0.12, 40, 60);          // strip along the divider (local y=0)
+    this.puR = clamp(m*0.06, 20, 30);           // ability button radius
+    this.puY = H - this.puR*1.35 - 12;          // ability pair hugs the player's own edge
+    this.basicX = W/2 - this.puR*2.1;
+    this.ultX = W/2 + this.puR*2.1;
+    this.playTop = this.hudH + this.R*0.55;
+    this.playBot = this.puY - this.puR*1.6 - this.R*0.6;
+    if (old){ // keep buttons proportionally placed through resizes
+      const sx = W/old.W, sy = H/old.H;
+      for (const b of this.buttons){ b.x*=sx; b.tx*=sx; b.y*=sy; b.ty*=sy; }
+    }
+    this.planks = makePlanks(W, H, (this.theme && this.theme.glow) || this.accent, this.theme && this.theme.deck);
+  }
+  playArea(){
+    return { x0:this.R+14, x1:this.W-this.R-14,
+             y0:this.playTop+this.R, y1:Math.max(this.playTop+this.R+10, this.playBot-this.R) };
+  }
+  begin(now){
+    this.state = 'prewave';
+    this.stateUntil = now + 0.8;
+    this.nextGruntAt = now + rand(5, 15);
+  }
+  startWave(now){
+    this.wave = waveFor(this.waveIndex);
+    this.buttons = [];
+    this.nextOrd = 0;
+    this.spawned = 0;
+    this.waveMistap = false;
+    this.positions = this.genPositions(this.wave.n);
+    this.kinds = shuffled(BUTTON_KINDS).slice(0, this.wave.n);
+    while (this.kinds.length < this.wave.n)      // overtime waves can exceed 8
+      this.kinds.push(BUTTON_KINDS[Math.floor(Math.random()*BUTTON_KINDS.length)]);
+    this.spawnGap = this.wave.form / (this.wave.n + 1);
+    this.spawnNextAt = now + this.spawnGap*0.5;
+    this.state = 'forming';
+  }
+  genPositions(n){
+    const a = this.playArea(), out = [];
+    for (let i=0;i<n;i++){
+      let x=0, y=0, ok=false;
+      const ax = this.hudH*1.05, ay = this.hudH*0.9, ar = this.hudH*1.0;  // portrait zone
+      for (let t=0; t<300 && !ok; t++){
+        x = rand(a.x0, a.x1); y = rand(a.y0, a.y1);
+        ok = out.every(p => Math.hypot(p.x-x, p.y-y) > this.R*2.55) &&
+             Math.hypot(x-ax, y-ay) > ar + this.R;
+      }
+      out.push({x, y});
+    }
+    return out;
+  }
+  update(now, dt){
+    if (now < this.intrudedUntil){
+      // an enemy ult is being delivered: the board is locked, so the wave
+      // clock politely waits — the telegraph must not be a hidden freeze
+      this.deadline += dt;
+      this.stateUntil += dt;
+      if (this.spawnNextAt !== undefined) this.spawnNextAt += dt;
+    }
+    if (this.state === 'prewave' && now >= this.stateUntil) this.startWave(now);
+    else if (this.state === 'forming'){
+      while (this.spawned < this.wave.n && now >= this.spawnNextAt){
+        const p = this.positions[this.spawned];
+        this.buttons.push({
+          x:p.x, y:p.y, tx:p.x, ty:p.y, r:this.R,
+          ord:this.spawned, kind:this.kinds[this.spawned],
+          active:false, powder:false, failed:false, born:now,
+        });
+        play('pop', 0.85, 0.9 + this.spawned*0.05);
+        this.spawned++;
+        this.spawnNextAt += this.spawnGap;
+      }
+      if (this.spawned >= this.wave.n){
+        for (const b of this.buttons) b.active = true;
+        this.deadline = now + this.wave.clear;
+        this.waveActivatedAt = now;
+        this.state = 'active';
+      }
+    }
+    else if (this.state === 'active' && now > this.deadline) this.failWave(now);
+    else if (this.state === 'failwait' && now >= this.stateUntil){
+      this.buttons = [];
+      this.waveIndex++;
+      this.state = 'prewave';
+      this.stateUntil = now + 0.5;
+    }
+    for (const b of this.buttons){ // juggle drift
+      b.x += (b.tx-b.x)*Math.min(1, dt*10);
+      b.y += (b.ty-b.y)*Math.min(1, dt*10);
+    }
+    if (now < this.ghostUntil && !REDUCED_MOTION && Math.random() < 0.12){
+      this.particles.push({ type:'wisp', t0:now, life:rand(1.2,2),
+        x:rand(30,this.W-30), y:rand(this.hudH+20,this.H-60),
+        vx:rand(-12,12), vy:-rand(6,16), size:rand(6,14), color:'#cfd8ff', ph:rand(0,TAU) });
+    }
+    if (this.theme && now >= this.nextThemeAt && !REDUCED_MOTION){
+      this.spawnThemeParticle(now);
+      this.nextThemeAt = now + rand(0.18, 0.5);
+    }
+    if (now >= this.nextGruntAt){ // idle pirate chatter, like PlayerFaceGestures
+      const moods = ['angry','peek','shock','smile'];
+      const m = moods[Math.floor(Math.random()*moods.length)];
+      play(this.voice + '-' + m, 0.75);
+      this.setMood(m, 1.6, now);    // face matches the grunt
+      this.nextGruntAt = now + rand(5, 15);
+    }
+  }
+  tickFx(now){ // runs every frame, even outside the match
+    const dt = this._fxLast ? Math.min(0.05, now - this._fxLast) : 0;
+    this._fxLast = now;
+    if (this.hpShown > this.hp)   // red ghost segment drains toward real hp
+      this.hpShown = Math.max(this.hp, this.hpShown - ((this.hpShown - this.hp)*3 + 30)*dt);
+    if (now >= this.nextBlink){
+      this.blinkUntil = now + 0.12;
+      this.nextBlink = now + rand(2, 6);
+    }
+    this.inkBlobs = this.inkBlobs.filter(k => now < k.until);
+    this.particles = this.particles.filter(p => now - p.t0 < p.life);
+    this.floats = this.floats.filter(f => now - f.t0 < 1.1);
+    this.frostTaps = this.frostTaps.filter(f => now - f.t0 < 0.5);
+  }
+  failWave(now){
+    play('wrong', 0.9);
+    play(this.voice + '-angry', 0.95);
+    this.setMood('angry', 2, now);
+    this.game.applyDamage(this.idx, AUTO_CLEAR_DMG, this.W/2, this.H*0.4);
+    for (const b of this.buttons) b.failed = true;
+    this.setAnnounce('TOO SLOW!', '#e0483f', now, 1.0);
+    this.state = 'failwait';
+    this.stateUntil = now + 1.0;
+  }
+  clearWave(now){
+    Snd.clear();
+    this.setMood('smile', 1, now);
+    // ult charge: base + speed (time left on the fuse) + perfect clear
+    const remainFrac = clamp((this.deadline - now) / this.wave.clear, 0, 1);
+    const perfect = !this.waveMistap;
+    const gain = Math.round(10 + 8*remainFrac + (perfect ? 7 : 0));
+    if (this.ultCharge < ULT_MAX){
+      this.ultCharge = Math.min(ULT_MAX, this.ultCharge + gain);
+      this.addFloat('+' + gain + '⚡', '#9ad0ff', this.W/2, this.playTop + 40, now);
+      if (this.ultCharge >= ULT_MAX){
+        this.setAnnounce('⚡ ULTIMATE READY', '#ffd44d', now, 1.2, false);
+      }
+    }
+    this.waveIndex++;
+    this.state = 'prewave';
+    this.stateUntil = now + 0.6;
+  }
+  setAnnounce(text, color, now, secs=1.2, big=true){
+    this.announce = { text, color, until: now+secs, t0: now, big };
+  }
+  /* character-flavored ambience drifting over the deck (drawn behind buttons) */
+  spawnThemeParticle(now){
+    const W = this.W, H = this.H;
+    switch (this.theme.particle){
+      case 'ember':
+        this.particles.push({ type:'ember', bg:true, t0:now, life:rand(1.5,2.8),
+          x:rand(20,W-20), y:rand(H*0.5,H*0.95), vx:rand(-8,8), vy:-rand(25,55),
+          size:rand(1.5,3.5), color:'#ffb24d', ph:rand(0,TAU) });
+        break;
+      case 'flake':
+        this.particles.push({ type:'flake', bg:true, t0:now, life:rand(2,3.5),
+          x:rand(10,W-10), y:rand(this.hudH+10,H*0.6), vx:rand(-6,6), vy:rand(18,34),
+          size:rand(1.5,3), color:'#e8f4ff', ph:rand(0,TAU) });
+        break;
+      case 'wisp':
+        this.particles.push({ type:'wisp', bg:true, t0:now, life:rand(2.5,4),
+          x:rand(30,W-30), y:rand(this.hudH+20,H-40), vx:rand(-10,10), vy:rand(-8,8),
+          size:rand(5,12), color:'#9a6ec9', ph:rand(0,TAU) });
+        break;
+    }
+  }
+  /* --- input; returns nothing, emits events through game --- */
+  abilityAt(lx, ly){
+    if (Math.hypot(lx-this.basicX, ly-this.puY) <= this.puR*1.2) return 'basic';
+    if (Math.hypot(lx-this.ultX, ly-this.puY) <= this.puR*1.55) return 'ult';
+    return null;
+  }
+  tap(lx, ly, now){
+    if (this.game.phase === 'select'){
+      this.game.trySelect(this.idx, lx, ly, now);
+      return;
+    }
+    // ability buttons are usable even while frozen (counterplay!)
+    const ab = this.abilityAt(lx, ly);
+    if (ab){
+      this.game.useAbility(this.idx, ab, now);
+      return;
+    }
+    if (!this.game.running) return;
+    if (now < this.intrudedUntil){
+      this.frostTaps.push({x:lx, y:ly, t0:now});
+      Snd.deny();
+      return;
+    }
+    if (now < this.frozenUntil){
+      this.frostTaps.push({x:lx, y:ly, t0:now});
+      Snd.deny();
+      return;
+    }
+    let hit = null;
+    for (let i=this.buttons.length-1; i>=0; i--){
+      const b = this.buttons[i];
+      if (Math.hypot(lx-b.x, ly-b.y) <= b.r*1.12){ hit = b; break; }
+    }
+    if (hit){
+      if (!hit.active || hit.failed) return;         // forming: harmless
+      if (hit.ord === this.nextOrd){
+        this.popButton(hit, now);
+      } else {
+        play('wrong', 0.85);
+        this.waveMistap = true;
+        this.addX(hit.x, hit.y, now);
+        this.game.applyDamage(this.idx, WRONG_TAP_DMG, hit.x, hit.y);
+      }
+    } else if (ly > this.hudH && ly < this.puY - this.puR*1.6 &&
+               (this.state === 'active' || this.state === 'forming')){
+      play('wrong', 0.7);
+      this.waveMistap = true;
+      this.addRipple(lx, ly, now);
+      this.game.applyDamage(this.idx, EMPTY_TAP_DMG, lx, ly);
+    }
+  }
+  popButton(b, now){
+    this.buttons.splice(this.buttons.indexOf(b), 1);
+    this.nextOrd++;
+    play('pop', 1, 0.95 + b.ord*0.05);
+    this.burst(b.x, b.y, b.kind.bg, now);
+    this.game.applyDamage(1 - this.idx, this.wave.dmg, null, null, this.idx);
+    if (b.powder){
+      play('boom', 0.9);
+      this.explosion(b.x, b.y, this.R*1.3, now);
+      this.shakeUntil = now + 0.35;
+      this.game.applyDamage(this.idx, POWDER_SELF_DMG, b.x, b.y);
+    }
+    if (this.buttons.length === 0 && this.state === 'active') this.clearWave(now);
+  }
+  /* --- effects applied by the enemy --- */
+  applyIce(now, secs){
+    this.frozenUntil = now + secs;
+    this.setAnnounce('❄ FROZEN ❄', '#a8dcff', now, secs);
+    Snd.freeze();
+    play(this.voice + '-shock', 0.95);
+    this.setMood('shock', secs, now);
+  }
+  applyGhost(now, secs){
+    this.ghostUntil = now + secs;
+    this.setAnnounce('👻 CURSED', '#cfd8ff', now, 1.0);
+    Snd.ghost();
+    play(this.voice + '-peek', 0.9);
+    this.setMood('peek', 1.5, now);
+  }
+  applyInk(now, count, secs){
+    const a = this.playArea();
+    for (let i=0;i<count;i++){
+      this.inkBlobs.push({ x:rand(a.x0,a.x1), y:rand(a.y0,a.y1),
+        r:this.R*rand(1.9,2.6), until:now+secs, t0:now, ph:rand(0,TAU) });
+    }
+    Snd.ink();
+    play(this.voice + '-shock', 0.9);
+    this.setMood('shock', 1.5, now);
+  }
+  applyJuggle(now){
+    const live = this.buttons.filter(b=>!b.failed);
+    if (live.length > 1){
+      const spots = live.map(b=>({x:b.tx, y:b.ty}));
+      for (let i=spots.length-1; i>0; i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [spots[i], spots[j]] = [spots[j], spots[i]];
+      }
+      if (spots.every((s,i)=>s.x===live[i].tx && s.y===live[i].ty)) spots.push(spots.shift());
+      live.forEach((b,i)=>{ b.tx = spots[i].x; b.ty = spots[i].y; });
+      for (const bt of live)
+        this.particles.push({ type:'ring', x:bt.x, y:bt.y, t0:now, life:0.5,
+          size:bt.r*1.3, color:'#e0a23c' });
+    }
+    this.setAnnounce('🐵 JUGGLED!', '#e0a23c', now, 1.0);
+    Snd.juggle();
+    play(this.voice + '-angry', 0.85);
+    this.setMood('angry', 1.5, now);
+  }
+  applyPowder(now){ // not in any MVP kit; kept for future characters
+    const targets = this.buttons.filter(b=>!b.powder && !b.failed);
+    for (let i=0; i<3 && targets.length; i++){
+      const k = Math.floor(Math.random()*targets.length);
+      targets[k].powder = true;
+      targets.splice(k,1);
+    }
+    this.setAnnounce('🛢 GUNPOWDER!', '#ff9c3f', now, 1.0);
+    play('cast', 0.9);
+    this.setMood('shock', 1.2, now);
+  }
+  explosion(x, y, size, now){
+    this.particles.push({ type:'boom', x, y, size, t0:now, life:0.38 });
+    this.particles.push({ type:'ring', x, y, t0:now, life:0.5, size:size*1.5, color:'#ffca6a' });
+    this.burst(x, y, '#ff9c3f', now, 26);
+    this.smoke(x, y, now);
+  }
+  cannonImpact(x, y, now){
+    play('boom', 1);
+    this.explosion(x, y, this.R*1.6, now);
+    this.shakeUntil = now + 0.45;
+  }
+  /* --- particles --- */
+  burst(x, y, color, now, n=14){
+    if (REDUCED_MOTION) n = Math.min(n, 6);
+    for (let i=0;i<n;i++){
+      const a = rand(0,TAU), sp = rand(90,360);
+      this.particles.push({ type:'spark', x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+        t0:now, life:rand(0.35,0.7), size:rand(2.5,6), color });
+    }
+    this.particles.push({ type:'ring', x, y, t0:now, life:0.45, size:this.R*1.25, color });
+  }
+  smoke(x, y, now){
+    for (let i=0;i<8;i++){
+      this.particles.push({ type:'smoke', x:x+rand(-10,10), y:y+rand(-10,10),
+        vx:rand(-20,20), vy:rand(-50,-15), t0:now, life:rand(0.6,1.1), size:rand(8,18), color:'#9aa0a6' });
+    }
+  }
+  addX(x, y, now){ this.particles.push({type:'x', x, y, t0:now, life:0.5, size:this.R*1.15, color:'#ff5a4d'}); }
+  addRipple(x, y, now){ this.particles.push({type:'ring', x, y, t0:now, life:0.4, size:this.R*0.7, color:'#ff5a4d'}); }
+  addFloat(txt, color, x, y, now){ this.floats.push({txt, color, x, y, t0:now}); }
+}
+
+/* Deck background: the original PlanksDiffuse texture, tinted with the
+   player's lantern glow. Falls back to procedural planks if the image
+   is unavailable. */
+function makePlanks(W, H, accent, deck){
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, W); c.height = Math.max(1, H);
+  const g = c.getContext('2d');
+  if (IMG.planks){
+    const img = IMG.planks;
+    const scale = Math.max(W/img.width, H/img.height, 0.45);
+    const w = img.width*scale, h = img.height*scale;
+    for (let y=0; y<H; y+=h)
+      for (let x=0; x<W; x+=w)
+        g.drawImage(img, x, y, w, h);
+    g.fillStyle = 'rgba(20,10,2,0.14)';  // just a touch of dusk
+    g.fillRect(0,0,W,H);
+  } else {
+    g.fillStyle = '#4a3018'; g.fillRect(0,0,W,H);
+    const ph = clamp(H/7, 34, 64);
+    const tones = ['#4d3419','#553a1d','#452c14','#513620','#48311a'];
+    let row = 0;
+    for (let y=0; y<H; y+=ph, row++){
+      g.fillStyle = tones[row % tones.length];
+      g.fillRect(0, y, W, ph);
+      g.fillStyle = 'rgba(0,0,0,0.35)';
+      g.fillRect(0, y, W, 2);
+    }
+  }
+  if (deck === 'snow'){                       // White Death: frosted planks + drifts
+    g.fillStyle = 'rgba(228,242,250,0.32)';
+    g.fillRect(0, 0, W, H);
+    for (const [cx, cy] of [[0,0],[W,0],[0,H],[W,H]]){
+      const dg = g.createRadialGradient(cx, cy, 0, cx, cy, Math.min(W,H)*0.55);
+      dg.addColorStop(0, 'rgba(242,250,255,0.45)');
+      dg.addColorStop(1, 'rgba(242,250,255,0)');
+      g.fillStyle = dg;
+      g.fillRect(0, 0, W, H);
+    }
+  } else if (deck === 'dark'){                // Inkeye: worn, cursed wood
+    g.fillStyle = 'rgba(18,9,26,0.4)';
+    g.fillRect(0, 0, W, H);
+    g.strokeStyle = 'rgba(0,0,0,0.3)';        // deep grain scars
+    g.lineWidth = 2;
+    for (let i=0;i<7;i++){
+      const gy = (i*173)%H, gx = (i*257)%(W/2);
+      g.beginPath(); g.moveTo(gx, gy);
+      g.quadraticCurveTo(gx+W*0.3, gy+6, gx+W*0.55, gy-4);
+      g.stroke();
+    }
+  }
+  // lantern glow at the player's own edge (local y = H)
+  let gr = g.createRadialGradient(W/2, H, 10, W/2, H, Math.max(W,H)*0.75);
+  gr.addColorStop(0, accent + '4a'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0,0,W,H);
+  // vignette
+  gr = g.createRadialGradient(W/2, H/2, Math.min(W,H)*0.3, W/2, H/2, Math.max(W,H)*0.8);
+  gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.22)');
+  g.fillStyle = gr; g.fillRect(0,0,W,H);
+  return c;
+}
+
+/* ---------------- the match ---------------- */
+class Game {
+  constructor(canvas){
+    this.cv = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.boards = [new Board(0,this), new Board(1,this)];
+    this.phase = 'idle';     // idle | select | countdown | match
+    this.running = false;
+    this.pendingHits = [];   // scheduled cannonballs
+    this.intrusions = [];    // in-flight ult boarding taunts
+    this.lastT = performance.now()/1000;
+    this.resize();
+    addEventListener('resize', ()=>this.resize());
+    canvas.addEventListener('pointerdown', e=>this.pointer(e));
+    canvas.addEventListener('contextmenu', e=>e.preventDefault());
+    requestAnimationFrame(()=>this.loop());
+  }
+  resize(){
+    const dpr = Math.min(devicePixelRatio||1, 2);
+    this.W = innerWidth; this.H = innerHeight;
+    this.cv.width = this.W*dpr; this.cv.height = this.H*dpr;
+    this.ctx.setTransform(dpr,0,0,dpr,0,0);
+    this.divH = clamp(this.H*0.085, 44, 78);
+    this.bH = (this.H - this.divH)/2;
+    this.divTop = this.bH;
+    this.divBot = this.bH + this.divH;
+    for (const b of this.boards) b.setGeom(this.W, this.bH);
+  }
+  enterSelect(){
+    const now = performance.now()/1000;
+    this.phase = 'select';
+    this.running = false;
+    this.pendingHits = [];
+    this.intrusions = [];
+    for (const b of this.boards){
+      b.reset();
+      b.setGeom(this.W, this.bH);
+      b.nextBlink = now + rand(1, 3);
+    }
+  }
+  /* three character cards per board, tapped on each player's own side */
+  cardRect(b, i){
+    const gap = Math.min(b.W*0.035, 16);
+    const w = Math.min((b.W - gap*2 - 28)/3, 170);
+    const h = Math.min(b.H*0.56, w*1.5);
+    const total = w*3 + gap*2;
+    return { x: b.W/2 - total/2 + i*(w+gap), y: b.H*0.26, w, h };
+  }
+  trySelect(boardIdx, lx, ly, now){
+    const b = this.boards[boardIdx];
+    for (let i=0;i<CHARACTERS.length;i++){
+      const r = this.cardRect(b, i);
+      if (lx >= r.x && lx <= r.x+r.w && ly >= r.y && ly <= r.y+r.h){
+        this.selectChar(boardIdx, i, now);
+        return;
+      }
+    }
+  }
+  selectChar(boardIdx, ci, now){
+    if (this.phase !== 'select') return;
+    const b = this.boards[boardIdx];
+    b.charIdx = ci;
+    b.character = CHARACTERS[ci];
+    b.avatar = AVATARS[CHARACTERS[ci].avatar];
+    b.voice = b.avatar.voice;
+    b.theme = CHARACTERS[ci].theme;
+    b.planks = makePlanks(b.W, b.H, b.theme.glow, b.theme.deck);  // the character claims the ship
+    b.setMood('smile', 1.4, now);
+    play('click', 0.7);
+    if (!playCharSound(b.avatar, 'select', 0.95)) play(b.voice + '-smile', 0.9);
+    if (this.boards.every(x => x.charIdx != null)){
+      this.phase = 'countdown';
+      this.vsStartAt = now;
+      this.matchStartAt = now + 2.6;     // pre-fight splash: X vs. Y
+      play('cast', 0.9);
+      play(this.boards[0].voice + '-smile', 0.9);
+      play(this.boards[1].voice + '-angry', 0.85);
+    }
+  }
+  beginMatch(now){
+    this.phase = 'match';
+    this.running = true;
+    this.winner = -1;
+    for (const b of this.boards){
+      b.basicCdUntil = now + BASIC_FIRST_CD;
+      b.ultCharge = 0;
+      b.begin(now);
+      playCharSound(b.avatar, 'start', 0.9);   // battle cry, if the character has one
+    }
+  }
+  /* screen → board-local. Board 1 (top) is rotated 180° so its player
+     faces the screen from the opposite side. */
+  pointer(e){
+    e.preventDefault();
+    Snd.ensure();
+    const r = this.cv.getBoundingClientRect();
+    const sx = (e.clientX - r.left) * (this.W / r.width);
+    const sy = (e.clientY - r.top) * (this.H / r.height);
+    const now = performance.now()/1000;
+    if (sy >= this.divBot)      this.boards[0].tap(sx, sy - this.divBot, now);
+    else if (sy <= this.divTop) this.boards[1].tap(this.W - sx, this.divTop - sy, now);
+  }
+  useAbility(playerIdx, which, now){
+    if (this.phase !== 'match' || !this.running){ Snd.deny(); return; }
+    const me = this.boards[playerIdx], enemy = this.boards[1 - playerIdx];
+    const ch = me.character;
+    if (!ch) return;
+    if (which === 'basic'){
+      if (now < me.basicCdUntil){ Snd.deny(); return; }
+      me.basicCdUntil = now + ch.basic.cd;
+      playCharSound(me.avatar, 'basic_voice', 0.95);
+      if (!playCharSound(me.avatar, 'basic_fx', 0.9)) play('click', 0.8);
+      me.setMood('smile', 0.8, now);
+      me.addFloat(ch.basic.icon + ' ' + ch.basic.name + '!', '#e8c469', me.W/2, me.hudH + 30, now);
+      switch (ch.id){
+        case 'redbeard': this.scheduleCannons(1 - playerIdx, 1, 6, now); break;
+        case 'frostjaw': enemy.applyIce(now, 0.8); break;
+        case 'inkeye':   enemy.applyInk(now, 1, 2.5); break;
+      }
+    } else {
+      if (me.ultCharge < ULT_MAX){ Snd.deny(); return; }
+      me.ultCharge = 0;
+      play('cast', 0.9);
+      Snd.whoosh();
+      me.setMood('smile', 2.2, now);
+      me.setAnnounce(ch.ult.icon + ' ' + ch.ult.name.toUpperCase() + '!', '#ffd44d', now, 1.3);
+      /* The boarding taunt: the caster's portrait crosses onto the enemy
+         deck, gloats for a second, and leaves — then the ult lands. The
+         victim's board is unclickable while boarded (their wave clock
+         pauses so the telegraph itself isn't a hidden freeze). */
+      const T_IN = 0.35, HOVER = 1.0, T_OUT = 0.35;
+      enemy.intrudedUntil = now + T_IN + HOVER + T_OUT;
+      enemy.setMood('shock', T_IN + HOVER + T_OUT, now);
+      enemy.setAnnounce(ch.ult.icon + ' INCOMING!', (me.theme && me.theme.glow) || me.accent,
+                        now, T_IN + HOVER, false);
+      this.intrusions.push({ caster: playerIdx, target: 1 - playerIdx, t0: now,
+        tIn: T_IN, hover: HOVER, tOut: T_OUT, taunted: false, fired: false });
+    }
+  }
+  scheduleCannons(boardIdx, n, dmg, now){
+    const a = this.boards[boardIdx].playArea();
+    const FLIGHT = 0.35;   // each ball is visible in the air this long
+    for (let i=0;i<n;i++){
+      const x = rand(a.x0, a.x1), y = rand(a.y0, a.y1);
+      this.pendingHits.push({ fireT: now + i*0.38, t: now + FLIGHT + i*0.38,
+        flight: FLIGHT, board: boardIdx, dmg, x, y,
+        fx: clamp(x + rand(-70, 70), 20, this.W - 20), fired: false });
+    }
+  }
+  /* the single choke-point every hit goes through — this is the
+     future network boundary */
+  applyDamage(boardIdx, amt, x, y, fromIdx = null){
+    if (!this.running) return;
+    const b = this.boards[boardIdx];
+    b.hp = Math.max(0, b.hp - amt);
+    const tNow = performance.now()/1000;
+    b.hpFlashUntil = tNow + 0.4;
+    if (tNow >= b.hurtSoundCdUntil && playCharSound(b.avatar, 'hurt', 0.85))
+      b.hurtSoundCdUntil = tNow + 1.2;
+    const fx = x==null ? b.W - 60 : x;
+    const fy = y==null ? b.hudH + 26 : y;
+    b.addFloat('-' + amt, '#ff5a4d', fx, fy, performance.now()/1000);
+    if (b.hp <= 0) this.endGame(1 - boardIdx);
+  }
+  endGame(winnerIdx){
+    this.running = false;
+    this.winner = winnerIdx;
+    this.phase = 'gameover';
+    const now = performance.now()/1000;
+    this.overAt = now;
+    this.overBoomed = false;
+    const winB = this.boards[winnerIdx], loseB = this.boards[1-winnerIdx];
+    winB.setMood('smile', 9999, now);
+    loseB.setMood('angry', 9999, now);
+    if (!playCharSound(winB.avatar, 'victory', 1)) play(winB.voice + '-smile', 1);
+    setTimeout(()=>{
+      if (!playCharSound(loseB.avatar, 'defeat', 0.95)) play(loseB.voice + '-angry', 0.95);
+    }, 500);
+    setTimeout(()=>{ Snd.fanfare(); }, 1500);
+    const taunts = [
+      'The loser walks the plank. Slowly. For dramatic effect.',
+      'Faster fingers, fuller treasure chest.',
+      'The sea remembers the slow ones.',
+      'All that gunpowder, and still not quick enough.',
+      'Send word to port: a new tapping legend sails tonight.',
+    ];
+    setTimeout(()=>{
+      document.getElementById('winTaunt').textContent =
+        '“' + taunts[Math.floor(Math.random()*taunts.length)] + '”';
+      document.getElementById('winOverlay').hidden = false;
+    }, 3000);
+  }
+  loop(){
+    const now = performance.now()/1000;
+    const dt = Math.min(0.05, now - this.lastT);
+    this.lastT = now;
+    for (const b of this.boards) b.tickFx(now);
+    if (this.phase === 'countdown' && now >= this.matchStartAt) this.beginMatch(now);
+    if (this.running){
+      for (const b of this.boards) b.update(now, dt);
+      for (let i=this.intrusions.length-1; i>=0; i--){
+        const it = this.intrusions[i];
+        const caster = this.boards[it.caster], victim = this.boards[it.target];
+        const k = now - it.t0;
+        if (!it.taunted && k >= it.tIn){
+          it.taunted = true;                          // the taunt, in their face
+          if (!playCharSound(caster.avatar, 'taunt', 1)) play(caster.voice + '-smile', 1);
+        }
+        if (!it.fired && k >= it.tIn + it.hover + it.tOut){
+          it.fired = true;
+          switch (caster.character.id){
+            case 'redbeard': this.scheduleCannons(it.target, 5, 8, now); break;
+            case 'frostjaw': victim.applyIce(now, 2.6); break;
+            case 'inkeye':
+              victim.applyGhost(now, 4);
+              victim.applyJuggle(now);
+              victim.applyInk(now, 2, 4);
+              break;
+          }
+          this.intrusions.splice(i, 1);
+        }
+      }
+      for (let i=this.pendingHits.length-1; i>=0; i--){
+        const h = this.pendingHits[i];
+        if (!h.fired && now >= h.fireT){       // muzzle crack at the enemy hull
+          h.fired = true;
+          play('boom', 0.3, 1.5);
+          this.boards[h.board].burst(h.fx, 8, '#ffd08a', now, 8);
+        }
+        if (now >= h.t){
+          this.boards[h.board].cannonImpact(h.x, h.y, now);
+          this.applyDamage(h.board, h.dmg, h.x, h.y);
+          this.pendingHits.splice(i,1);
+        }
+      }
+    }
+    this.render(now);
+    requestAnimationFrame(()=>this.loop());
+  }
+  render(now){
+    const g = this.ctx;
+    g.fillStyle = '#0a0f18';
+    g.fillRect(0,0,this.W,this.H);
+    // bottom board (player 1): local y=0 sits at the divider
+    g.save();
+    g.translate(0, this.divBot);
+    this.renderBoard(g, this.boards[0], now);
+    g.restore();
+    // top board (player 2): rotated 180°
+    g.save();
+    g.translate(this.W, this.divTop);
+    g.rotate(Math.PI);
+    this.renderBoard(g, this.boards[1], now);
+    g.restore();
+    this.renderDivider(g, now);
+  }
+  /* The gap between the boards is open sea: two ships side by side,
+     hulls at the water's edge, cannons run out and aimed at each other. */
+  renderDivider(g, now){
+    const y0 = this.divTop, h = this.divH, W = this.W;
+    const sea = g.createLinearGradient(0, y0, 0, y0+h);
+    sea.addColorStop(0, '#16465f'); sea.addColorStop(0.5, '#1f6285'); sea.addColorStop(1, '#16465f');
+    g.fillStyle = sea;
+    g.fillRect(0, y0, W, h);
+    // rolling wave lines
+    for (let i=0;i<3;i++){
+      g.strokeStyle = `rgba(190,228,246,${0.12+i*0.06})`;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      const yy = y0 + h*(0.32+i*0.18), amp = h*0.06;
+      const drift = REDUCED_MOTION ? 0 : now*(22+i*14)*(i%2 ? -1 : 1);
+      const wl = 46+i*20;
+      for (let x=0; x<=W; x+=8){
+        const y = yy + Math.sin((x+drift)/wl*TAU)*amp;
+        x === 0 ? g.moveTo(x, y) : g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    // the two hulls, gently bobbing out of phase
+    const bobT = REDUCED_MOTION ? 0 : Math.sin(now*1.3)*1.4;
+    const bobB = REDUCED_MOTION ? 0 : Math.sin(now*1.3+2.2)*1.4;
+    this.renderHull(g, y0 + bobT, +1, this.boards[1], now);      // top ship
+    this.renderHull(g, this.divBot + bobB, -1, this.boards[0], now); // bottom ship
+  }
+  /* One ship's side at the waterline: hull planks, gunports, a trim stripe
+     in the character's color, cannons run out toward the enemy, and foam
+     where hull meets water. dir +1 juts down into the sea (top ship),
+     -1 juts up (bottom ship). */
+  renderHull(g, edgeY, dir, b, now){
+    const W = this.W, hullH = this.divH*0.28, cannonL = this.divH*0.30;
+    const y = dir === 1 ? edgeY : edgeY - hullH;
+    const deckSide = dir === 1 ? y : y+hullH, waterSide = dir === 1 ? y+hullH : y;
+    const hull = g.createLinearGradient(0, deckSide, 0, waterSide);
+    hull.addColorStop(0, '#5c3d20'); hull.addColorStop(0.7, '#3f2a14');
+    hull.addColorStop(1, '#2b1c0d');                              // dark at the waterline
+    g.fillStyle = hull;
+    g.fillRect(0, y, W, hullH);
+    g.fillStyle = (b.theme && b.theme.glow) || b.accent;          // trim stripe (deck side)
+    g.globalAlpha = 0.85;
+    g.fillRect(0, dir === 1 ? y+1 : y+hullH-3.5, W, 2.5);
+    g.globalAlpha = 1;
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1;           // plank seams
+    for (let x=W*0.06; x<W; x+=W*0.09){
+      g.beginPath(); g.moveTo(x, y); g.lineTo(x, y+hullH); g.stroke();
+    }
+    // cannons: interleaved between the two ships so the guns cross mid-water
+    const n = Math.max(3, Math.round(W/150));
+    for (let i=0;i<n;i++){
+      const cx = W*(i + (dir === 1 ? 0.75 : 0.25))/n;
+      const base = waterSide, tip = base + dir*cannonL;
+      g.fillStyle = 'rgba(12,8,4,0.9)';                           // gunport
+      g.fillRect(cx-9, dir === 1 ? base-hullH*0.55 : base, 18, hullH*0.55);
+      g.fillStyle = '#23272d';                                    // tapered barrel
+      g.beginPath();
+      g.moveTo(cx-6, base); g.lineTo(cx+6, base);
+      g.lineTo(cx+4, tip); g.lineTo(cx-4, tip);
+      g.closePath(); g.fill();
+      g.fillStyle = '#31363e';                                    // breech ring
+      g.fillRect(cx-7, dir === 1 ? base : base-3, 14, 3);
+      g.fillStyle = '#31363e';                                    // muzzle rim
+      g.beginPath(); g.arc(cx, tip, 5.5, 0, TAU); g.fill();
+      g.fillStyle = '#0d0f12';                                    // bore
+      g.beginPath(); g.arc(cx, tip, 3, 0, TAU); g.fill();
+    }
+    // foam licking the waterline
+    g.strokeStyle = 'rgba(224,242,250,0.55)'; g.lineWidth = 2;
+    g.beginPath();
+    const drift = REDUCED_MOTION ? 0 : now*30*dir;
+    for (let x=0; x<=W; x+=7){
+      const fy = waterSide + dir*(1.5 + Math.abs(Math.sin((x+drift)/26))*2.5);
+      x === 0 ? g.moveTo(x, fy) : g.lineTo(x, fy);
+    }
+    g.stroke();
+  }
+  renderBoard(g, b, now){
+    if (now < b.shakeUntil && !REDUCED_MOTION){
+      const k = (b.shakeUntil-now)*14;
+      g.translate(rand(-k,k), rand(-k,k));
+    }
+    g.drawImage(b.planks, 0, 0);
+
+    if (this.phase === 'select'){
+      this.renderSelect(g, b, now);
+      return;
+    }
+    if (this.phase === 'countdown'){
+      this.renderVs(g, b, now);
+      return;
+    }
+    if (this.phase === 'gameover'){
+      this.renderGameOver(g, b, now);
+      return;
+    }
+
+    // wave-timer fuse under the HUD
+    if (b.state === 'active' && this.running){
+      const frac = clamp((b.deadline-now)/b.wave.clear, 0, 1);
+      const fx0 = Math.round(b.hudH*2.25), fw = b.W - fx0 - 14; // clears the portrait
+      g.fillStyle = 'rgba(0,0,0,0.4)';
+      g.fillRect(fx0, b.hudH+3, fw, 5);
+      g.fillStyle = frac > 0.35 ? '#e8c469' : '#ff5a3d';
+      g.fillRect(fx0, b.hudH+3, fw*frac, 5);
+      if (frac < 1){
+        const fx = fx0 + fw*frac;
+        g.fillStyle = '#fff2b0';
+        g.beginPath(); g.arc(fx, b.hudH+5.5, 3.4+Math.sin(now*30)*1.2, 0, TAU); g.fill();
+      }
+    }
+    // character ambience floats behind the buttons
+    for (const p of b.particles) if (p.bg) this.renderParticle(g, p, now);
+    // buttons
+    for (const bt of b.buttons) this.renderButton(g, b, bt, now);
+    // effect particles
+    for (const p of b.particles) if (!p.bg) this.renderParticle(g, p, now);
+    // incoming cannonballs arcing over from the enemy ship (divider side)
+    for (const h of this.pendingHits){
+      if (h.board !== b.idx || !h.fired || now >= h.t) continue;
+      const pr = clamp((now - h.fireT)/h.flight, 0, 1);
+      const cx = h.fx + (h.x - h.fx)*pr;
+      const cy = 2 + (h.y - 2)*pr;
+      const size = 5 + Math.sin(pr*Math.PI)*5;   // swells mid-arc
+      g.fillStyle = 'rgba(0,0,0,0.25)';
+      g.beginPath(); g.ellipse(cx+3, cy+6, size*0.9, size*0.5, 0, 0, TAU); g.fill();
+      g.fillStyle = '#15181c';
+      g.beginPath(); g.arc(cx, cy, size, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.25)';
+      g.beginPath(); g.arc(cx-size*0.3, cy-size*0.3, size*0.3, 0, TAU); g.fill();
+    }
+    // kraken ink sits on top of everything in play
+    for (const k of b.inkBlobs){
+      const age = now - k.t0, left = k.until - now;
+      const alpha = Math.min(1, age*4, left*2.2) * 0.94;
+      const wob = 1 + Math.sin(now*2.2 + k.ph)*0.05;
+      g.fillStyle = `rgba(18,13,26,${alpha})`;
+      for (let i=0;i<5;i++){
+        const aa = k.ph + i*TAU/5;
+        g.beginPath();
+        g.arc(k.x + Math.cos(aa)*k.r*0.42, k.y + Math.sin(aa)*k.r*0.42, k.r*0.62*wob, 0, TAU);
+        g.fill();
+      }
+      g.beginPath(); g.arc(k.x, k.y, k.r*0.75*wob, 0, TAU); g.fill();
+      g.fillStyle = `rgba(140,105,190,${alpha*0.22})`;             // wet sheen
+      g.beginPath(); g.ellipse(k.x - k.r*0.25, k.y - k.r*0.3, k.r*0.4, k.r*0.22, -0.5, 0, TAU); g.fill();
+      g.fillStyle = `rgba(18,13,26,${alpha*0.9})`;                 // dripping droplets
+      for (const [ddx, ddr] of [[-0.45, 0.1], [0.3, 0.13]]){
+        const dy = k.r*(0.8 + 0.25*Math.sin(now*1.5 + k.ph + ddx*9));
+        g.beginPath(); g.arc(k.x + k.r*ddx, k.y + dy, k.r*ddr, 0, TAU); g.fill();
+      }
+      if (age < 0.35){                                             // landing splash
+        const st = age/0.35;
+        g.strokeStyle = `rgba(120,90,160,${(1-st)*0.8})`; g.lineWidth = 4*(1-st)+1;
+        g.beginPath(); g.arc(k.x, k.y, k.r*(0.8 + st*0.7), 0, TAU); g.stroke();
+      }
+      if (age < 0.6){
+        g.globalAlpha = 1 - age/0.6;
+        g.font = `${Math.round(k.r*0.8)}px serif`;
+        g.textAlign='center'; g.textBaseline='middle';
+        g.fillText('🦑', k.x, k.y);
+        g.globalAlpha = 1;
+      }
+    }
+    // freeze overlay (power-up row stays above it, still tappable)
+    if (now < b.frozenUntil){
+      const left = b.frozenUntil - now;
+      const a = Math.min(1, left*3);
+      const top = b.hudH, bot = b.puY - b.puR*1.5, midY = (top+bot)/2;
+      const icy = g.createRadialGradient(b.W/2, midY, 30, b.W/2, midY, Math.max(b.W, bot-top)*0.62);
+      icy.addColorStop(0, `rgba(175,225,255,${a*0.1})`);
+      icy.addColorStop(1, `rgba(140,200,255,${a*0.36})`);
+      g.fillStyle = icy;
+      g.fillRect(0, top, b.W, bot-top);
+      g.fillStyle = `rgba(210,238,255,${a*0.8})`;      // crystal shards on both rims
+      for (let x=14; x<b.W-8; x+=34){
+        const hgt = (12 + (x*53)%16) * a;
+        g.beginPath(); g.moveTo(x-9, top); g.lineTo(x+9, top); g.lineTo(x, top+hgt); g.closePath(); g.fill();
+        g.beginPath(); g.moveTo(x+8, bot); g.lineTo(x+26, bot); g.lineTo(x+17, bot-hgt); g.closePath(); g.fill();
+      }
+      g.save();                                        // big slow snowflake
+      g.translate(b.W/2, midY);
+      g.rotate(REDUCED_MOTION ? 0 : now*0.5);
+      g.globalAlpha = a*(0.55 + Math.sin(now*8)*0.15);
+      g.strokeStyle = '#dff2ff'; g.lineWidth = 3.5; g.lineCap = 'round';
+      const fr = b.R*1.4;
+      for (let i=0;i<6;i++){
+        const ang = i*TAU/6;
+        g.beginPath(); g.moveTo(0,0); g.lineTo(Math.cos(ang)*fr, Math.sin(ang)*fr); g.stroke();
+        const jx = Math.cos(ang)*fr*0.55, jy = Math.sin(ang)*fr*0.55;
+        for (const sd of [-1,1]){
+          const a2 = ang + sd*0.5;
+          g.beginPath(); g.moveTo(jx, jy);
+          g.lineTo(jx+Math.cos(a2)*fr*0.28, jy+Math.sin(a2)*fr*0.28); g.stroke();
+        }
+      }
+      g.restore();
+      g.globalAlpha = 1;
+      for (const f of b.frostTaps){
+        const t = (now-f.t0)/0.5;
+        g.strokeStyle = `rgba(200,230,255,${(1-t)*0.9})`;
+        g.lineWidth = 2;
+        g.beginPath(); g.arc(f.x, f.y, 10+t*26, 0, TAU); g.stroke();
+      }
+    }
+    // floats
+    for (const f of b.floats){
+      const t = (now - f.t0)/1.1;
+      g.globalAlpha = 1 - t;
+      g.font = `700 ${Math.round(b.R*0.62)}px -apple-system, "Segoe UI", sans-serif`;
+      g.textAlign='center'; g.textBaseline='middle';
+      g.strokeStyle = 'rgba(0,0,0,0.7)'; g.lineWidth = 4;
+      g.strokeText(f.txt, f.x, f.y - t*44);
+      g.fillStyle = f.color;
+      g.fillText(f.txt, f.x, f.y - t*44);
+      g.globalAlpha = 1;
+    }
+    // announcement
+    if (b.announce && now < b.announce.until){
+      const a = b.announce;
+      const t = clamp((now - a.t0)/0.18, 0, 1);
+      const fade = clamp((a.until - now)/0.3, 0, 1);
+      g.globalAlpha = t*fade;
+      const size = (a.big ? b.R*1.05 : b.R*0.7) * (0.8 + t*0.2);
+      g.font = `700 ${Math.round(size)}px Georgia, serif`;
+      g.textAlign='center'; g.textBaseline='middle';
+      const ay = b.hudH + (b.puY - b.hudH)*0.32;
+      g.strokeStyle='rgba(0,0,0,0.75)'; g.lineWidth=6;
+      g.strokeText(a.text, b.W/2, ay);
+      g.fillStyle = a.color;
+      g.fillText(a.text, b.W/2, ay);
+      g.globalAlpha = 1;
+    }
+    this.renderIntrusion(g, b, now);
+    this.renderHud(g, b, now);
+    this.renderAbilities(g, b, now);
+  }
+  /* The caster's portrait sails in over the victim's deck under a spotlight,
+     gloats, and sails back — the whole board dims and locks beneath them. */
+  renderIntrusion(g, b, now){
+    for (const it of this.intrusions){
+      if (it.target !== b.idx) continue;
+      const caster = this.boards[it.caster];
+      const k = now - it.t0, total = it.tIn + it.hover + it.tOut;
+      if (k < 0 || k >= total) continue;
+      const cx = b.W/2, cy = b.playTop + (b.playBot - b.playTop)*0.62, startY = -80;
+      const pr = Math.min(b.W, b.H)*0.17;
+      let y, presence;
+      if (k < it.tIn){
+        const e = 1 - (1 - k/it.tIn)**2;
+        y = startY + (cy - startY)*e; presence = e;
+      } else if (k < it.tIn + it.hover){
+        y = cy + (REDUCED_MOTION ? 0 : Math.sin(now*3)*6); presence = 1;
+      } else {
+        const e = ((k - it.tIn - it.hover)/it.tOut)**2;
+        y = cy + (startY - cy)*e; presence = 1 - e;
+      }
+      g.fillStyle = `rgba(0,0,0,${0.32*presence})`;              // spotlight dim
+      g.fillRect(0, b.hudH, b.W, b.puY - b.puR*1.5 - b.hudH);
+      const glow = (caster.theme && caster.theme.glow) || caster.accent;
+      g.strokeStyle = glow;
+      g.globalAlpha = presence*(0.6 + Math.sin(now*8)*0.25);
+      g.lineWidth = 4;
+      g.beginPath(); g.arc(cx, y, pr + 9 + Math.sin(now*8)*3, 0, TAU); g.stroke();
+      g.globalAlpha = 1;
+      drawPirate(g, caster.avatar, cx, y, pr, now, 'smile', false);
+    }
+  }
+  renderButton(g, b, bt, now){
+    const grow = clamp((now - bt.born)/0.16, 0, 1);
+    const r = bt.r * (0.5 + grow*0.5);
+    let alpha = bt.active ? 1 : 0.45;
+    if (bt.failed) alpha = 0.25 + Math.sin(now*20)*0.05;
+    g.globalAlpha = alpha;
+    g.fillStyle = 'rgba(0,0,0,0.35)';                        // drop shadow
+    g.beginPath(); g.arc(bt.x+3, bt.y+4, r, 0, TAU); g.fill();
+    const seed = bt.ord*7 + (b.waveIndex%5)*3 + b.idx*11;
+    const ghosted = now < b.ghostUntil && !bt.failed;
+    if (!ghosted && !bt.failed){
+      drawButtonFace(g, bt.x, bt.y, r, bt.kind, seed);
+    } else {
+      drawButtonBase(g, bt.x, bt.y, r, seed);
+    }
+    if (ghosted){
+      // Ghost Curse: identity wiped — same grey face on every button
+      g.fillStyle = 'rgba(109,115,121,0.92)';
+      g.beginPath(); g.arc(bt.x, bt.y, r*0.88, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = r*0.09; g.lineCap='round';
+      g.beginPath(); g.arc(bt.x, bt.y-2, r*0.4, Math.PI*0.15, Math.PI*1.2); g.stroke();
+      g.beginPath(); g.arc(bt.x+r*0.18, bt.y+r*0.22, r*0.18, 0, TAU); g.stroke();
+    } else if (bt.failed){
+      g.fillStyle = 'rgba(85,85,85,0.85)';
+      g.beginPath(); g.arc(bt.x, bt.y, r*0.88, 0, TAU); g.fill();
+    }
+    if (bt.powder){                                          // gunpowder coating
+      g.fillStyle = 'rgba(25,18,10,0.85)';
+      for (let i=0;i<7;i++){
+        const aa = i*2.39996 + bt.ord;                       // stable speckle layout
+        const rr = r*0.6*((i%3)+1)/3;
+        g.beginPath();
+        g.arc(bt.x+Math.cos(aa)*rr, bt.y+Math.sin(aa)*rr, r*0.09, 0, TAU);
+        g.fill();
+      }
+      const em = 0.6 + Math.sin(now*12 + bt.ord)*0.4;        // ember fuse
+      g.fillStyle = `rgba(255,150,50,${em})`;
+      g.beginPath(); g.arc(bt.x + r*0.62, bt.y - r*0.62, r*0.14, 0, TAU); g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+  renderParticle(g, p, now){
+    const t = (now - p.t0)/p.life;
+    if (t >= 1) return;
+    if (p.type === 'spark'){
+      g.globalAlpha = 1-t;
+      g.fillStyle = p.color;
+      g.beginPath();
+      g.arc(p.x + p.vx*t*p.life, p.y + p.vy*t*p.life + 140*(t*p.life)*(t*p.life), p.size*(1-t*0.6), 0, TAU);
+      g.fill();
+    } else if (p.type === 'ring'){
+      g.globalAlpha = (1-t)*0.9;
+      g.strokeStyle = p.color; g.lineWidth = 3.5*(1-t)+1;
+      g.beginPath(); g.arc(p.x, p.y, p.size*(0.4+t*1.4), 0, TAU); g.stroke();
+    } else if (p.type === 'x'){
+      g.globalAlpha = 1-t;
+      g.strokeStyle = p.color; g.lineWidth = 6; g.lineCap='round';
+      const s = p.size*(0.7+t*0.3);
+      g.beginPath();
+      g.moveTo(p.x-s/2, p.y-s/2); g.lineTo(p.x+s/2, p.y+s/2);
+      g.moveTo(p.x+s/2, p.y-s/2); g.lineTo(p.x-s/2, p.y+s/2);
+      g.stroke();
+    } else if (p.type === 'smoke'){
+      g.globalAlpha = (1-t)*0.35;
+      g.fillStyle = p.color;
+      g.beginPath();
+      g.arc(p.x + p.vx*t*p.life, p.y + p.vy*t*p.life, p.size*(0.6+t), 0, TAU);
+      g.fill();
+    } else if (p.type === 'boom'){
+      drawBoom(g, p.x, p.y, p.size, t);
+    } else if (p.type === 'ember'){
+      g.globalAlpha = (1-t)*(0.5 + 0.4*Math.sin(now*20 + p.ph));
+      g.fillStyle = p.color;
+      g.beginPath();
+      g.arc(p.x + p.vx*t*p.life + Math.sin(now*3+p.ph)*4, p.y + p.vy*t*p.life,
+            p.size*(1-t*0.5), 0, TAU);
+      g.fill();
+    } else if (p.type === 'flake'){
+      g.globalAlpha = (1-t)*0.75;
+      g.fillStyle = p.color;
+      g.beginPath();
+      g.arc(p.x + p.vx*t*p.life + Math.sin(now*2+p.ph)*7, p.y + p.vy*t*p.life,
+            p.size, 0, TAU);
+      g.fill();
+    } else if (p.type === 'wisp'){
+      g.globalAlpha = Math.sin(Math.min(1,t)*Math.PI)*0.22;
+      g.fillStyle = p.color;
+      g.beginPath();
+      g.arc(p.x + p.vx*t*p.life, p.y + p.vy*t*p.life,
+            p.size*(1 + 0.25*Math.sin(now*3+p.ph)), 0, TAU);
+      g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+  renderHud(g, b, now){
+    g.fillStyle = 'rgba(10,7,4,0.55)';
+    g.fillRect(0, 0, b.W, b.hudH);
+    g.fillStyle = 'rgba(232,196,105,0.4)';
+    g.fillRect(0, b.hudH-1, b.W, 1);
+    drawPirate(g, b.avatar, b.hudH*1.05, b.hudH*0.9, b.hudH*1.0, now,
+               b.moodNow(now), now < b.blinkUntil);   // big badge, overhangs the deck
+    const bx = Math.round(b.hudH*2.25), bw = b.W - bx - 144,
+          bh = Math.max(18, b.hudH*0.52), by = (b.hudH-bh)/2;
+    const flash = clamp((b.hpFlashUntil - now)/0.4, 0, 1);
+    g.fillStyle = 'rgba(0,0,0,0.6)';
+    g.fillRect(bx, by, bw, bh);
+    const pct = b.hp / MAX_HP, shownPct = b.hpShown / MAX_HP;
+    if (shownPct > pct){                                   // red ghost: damage just taken
+      g.fillStyle = '#ff5a3d';
+      g.fillRect(bx + bw*pct, by, bw*(shownPct-pct), bh);
+    }
+    const hpColor = pct > 0.5 ? '#4fc06c' : pct > 0.25 ? '#f0b03c' : '#f0523f';
+    g.fillStyle = hpColor;
+    g.fillRect(bx, by, bw*pct, bh);
+    g.fillStyle = 'rgba(255,255,255,0.22)';
+    g.fillRect(bx, by, bw*pct, bh*0.42);
+    if (flash > 0){                                        // white blink on hit
+      g.fillStyle = `rgba(255,255,255,${flash*0.4})`;
+      g.fillRect(bx, by, bw, bh);
+    }
+    g.strokeStyle = flash > 0 ? `rgba(255,120,90,${0.5+flash*0.5})` : 'rgba(232,196,105,0.85)';
+    g.lineWidth = flash > 0 ? 2.5 : 1.5;
+    g.strokeRect(bx, by, bw, bh);
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1;
+    for (let i=1;i<10;i++){
+      g.beginPath();
+      g.moveTo(bx + bw*i/10, by); g.lineTo(bx + bw*i/10, by+bh);
+      g.stroke();
+    }
+    g.textBaseline='middle';
+    const hudName = b.character ? b.character.name.toUpperCase() : PLAYER_NAME[b.idx];
+    g.font = `700 ${Math.round(bh*0.56)}px -apple-system, "Segoe UI", sans-serif`;
+    g.textAlign='left';
+    g.strokeStyle = 'rgba(0,0,0,0.7)'; g.lineWidth = 3;
+    g.strokeText(hudName, bx+8, by+bh/2+1);
+    g.fillStyle = b.accent;
+    g.fillText(hudName, bx+8, by+bh/2+1);
+    // the HP number lives inside the bar, big and unmissable
+    g.font = `800 ${Math.round(bh*0.82)}px -apple-system, "Segoe UI", sans-serif`;
+    g.textAlign='right';
+    g.strokeStyle = 'rgba(0,0,0,0.75)'; g.lineWidth = 4;
+    g.strokeText(String(b.hp), bx+bw-8, by+bh/2+1);
+    g.fillStyle = '#ffffff';
+    g.fillText(String(b.hp), bx+bw-8, by+bh/2+1);
+    g.font = `600 ${Math.round(bh*0.78)}px Georgia, serif`;
+    g.fillStyle = '#e8c469';
+    g.fillText('WAVE ' + (b.waveIndex+1), b.W-14, b.hudH/2+1);
+  }
+  renderAbilities(g, b, now){
+    const ch = b.character;
+    if (!ch) return;
+    const y = b.puY;
+    // basic: cooldown chip
+    {
+      const x = b.basicX, r = b.puR;
+      const cooling = now < b.basicCdUntil;
+      g.globalAlpha = cooling ? 0.6 : 1;
+      g.fillStyle = 'rgba(0,0,0,0.4)';
+      g.beginPath(); g.arc(x+2, y+3, r, 0, TAU); g.fill();
+      g.fillStyle = '#3a2c17';
+      g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+      g.strokeStyle = cooling ? 'rgba(232,196,105,0.35)' : '#e8c469';
+      g.lineWidth = cooling ? 1.5 : 2.5;
+      g.beginPath(); g.arc(x, y, r, 0, TAU); g.stroke();
+      drawAbilityIcon(g, ch.basic, x, y, r*0.85);
+      if (cooling){
+        const frac = (b.basicCdUntil - now)/ch.basic.cd;
+        g.fillStyle = 'rgba(10,7,4,0.65)';
+        g.beginPath();
+        g.moveTo(x, y);
+        g.arc(x, y, r, -Math.PI/2, -Math.PI/2 + TAU*frac);
+        g.closePath(); g.fill();
+      }
+      g.globalAlpha = 1;
+    }
+    // ultimate: charge ring
+    {
+      const x = b.ultX, r = b.puR*1.3;
+      const charge = b.ultCharge / ULT_MAX;
+      const ready = charge >= 1;
+      g.fillStyle = 'rgba(0,0,0,0.4)';
+      g.beginPath(); g.arc(x+2, y+3, r, 0, TAU); g.fill();
+      g.fillStyle = ready ? '#4a3313' : '#2c2114';
+      g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+      if (ready){
+        g.fillStyle = `rgba(255,212,77,${0.14 + Math.sin(now*6)*0.08})`;
+        g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+        g.strokeStyle = `rgba(255,212,77,${0.5 + Math.sin(now*6)*0.3})`;
+        g.lineWidth = 2;
+        g.beginPath(); g.arc(x, y, r + 5 + Math.sin(now*6)*1.5, 0, TAU); g.stroke();
+      }
+      g.strokeStyle = 'rgba(232,196,105,0.25)'; g.lineWidth = r*0.16;
+      g.beginPath(); g.arc(x, y, r*0.88, 0, TAU); g.stroke();
+      if (charge > 0){
+        g.strokeStyle = ready ? '#ffd44d' : '#e8c469'; g.lineCap = 'round';
+        g.beginPath(); g.arc(x, y, r*0.88, -Math.PI/2, -Math.PI/2 + TAU*Math.min(1, charge));
+        g.stroke();
+      }
+      g.globalAlpha = ready ? 1 : 0.75;
+      drawAbilityIcon(g, ch.ult, x, y, r*0.72);
+      g.globalAlpha = 1;
+    }
+  }
+  /* Pre-fight splash: your pirate squares up against theirs. This is the
+     future spotlight for skins and taunts (see GDD wishlist). */
+  renderVs(g, b, now){
+    const W = b.W, H = b.H;
+    g.fillStyle = 'rgba(8,6,3,0.55)';
+    g.fillRect(0, 0, W, H);
+    const foe = this.boards[1 - b.idx];
+    const t = clamp((now - this.vsStartAt)/0.4, 0, 1);         // slide-in
+    const ease = 1 - (1-t)*(1-t);
+    const r = Math.min(W*0.17, H*0.2);
+    const cy = H*0.4;
+    const mx = -r + (W*0.26 + r)*ease;                          // me from the left
+    const fx = W + r - (W*0.26 + r)*ease;                       // them from the right
+    drawPirate(g, b.avatar, mx, cy, r, now, 'smile', false);
+    drawPirate(g, foe.avatar, fx, cy, r, now, 'angry', false);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    const nameY = cy + r + Math.min(H*0.055, 26);
+    g.font = `700 ${Math.round(Math.min(W*0.055, 26))}px Georgia, serif`;
+    g.strokeStyle = 'rgba(0,0,0,0.75)'; g.lineWidth = 4;
+    g.strokeText(b.character.name.toUpperCase(), mx, nameY);
+    g.fillStyle = (b.theme && b.theme.glow) || b.accent;
+    g.fillText(b.character.name.toUpperCase(), mx, nameY);
+    g.strokeText(foe.character.name.toUpperCase(), fx, nameY);
+    g.fillStyle = (foe.theme && foe.theme.glow) || foe.accent;
+    g.fillText(foe.character.name.toUpperCase(), fx, nameY);
+    g.font = `italic ${Math.round(Math.min(W*0.035, 16))}px Georgia, serif`;
+    g.fillStyle = '#c9b98d';
+    const vsTitleY = nameY + Math.min(W*0.055, 26)*0.75 + Math.min(W*0.035, 16)*0.7 + 3;
+    g.fillText(b.character.title, mx, vsTitleY);
+    g.fillText(foe.character.title, fx, vsTitleY);
+    const pulse = 1 + (REDUCED_MOTION ? 0 : Math.sin(now*6)*0.06);
+    g.globalAlpha = ease;
+    g.font = `900 ${Math.round(Math.min(W*0.16, H*0.18)*pulse)}px Georgia, serif`;
+    g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 7;
+    g.strokeText('VS', W/2, cy);
+    g.fillStyle = '#ffd44d';
+    g.fillText('VS', W/2, cy);
+    g.font = `600 ${Math.round(Math.min(W*0.04, 18))}px Georgia, serif`;
+    g.fillStyle = '#e8c469';
+    const dots = '.'.repeat(1 + Math.floor(now*2)%3);
+    g.fillText('READY THE CANNONS' + dots, W/2, H*0.78);
+    g.globalAlpha = 1;
+  }
+  /* Knockout ending, staged like the VS splash: both portraits square up,
+     the loser takes an explosion to the face and is blown off screen,
+     then the winner is declared. */
+  renderGameOver(g, b, now){
+    const W = b.W, H = b.H;
+    g.fillStyle = 'rgba(8,6,3,0.6)';
+    g.fillRect(0, 0, W, H);
+    const tt = now - this.overAt;
+    const r = Math.min(W*0.17, H*0.2), cy = H*0.4;
+    const iWon = b.idx === this.winner;
+    const winX = iWon ? W*0.26 : W*0.74;
+    const loseX = iWon ? W*0.74 : W*0.26;
+    const winB = this.boards[this.winner], loseB = this.boards[1-this.winner];
+    // loser: takes the hit at 0.5s and is BLASTED off — it's an explosion
+    const fly = clamp((tt - 0.55)/0.45, 0, 1);
+    if (fly < 1){
+      const dir = loseX < W/2 ? -1 : 1;
+      const lx = loseX + dir*fly*fly*(W*0.85 + r*2);
+      const ly = cy - Math.sin(fly*Math.PI*0.6)*H*0.1;
+      const shake = (tt > 0.48 && tt < 0.62 && !REDUCED_MOTION) ? rand(-3,3) : 0;
+      g.save();
+      g.translate(lx + shake, ly + shake);
+      g.rotate(REDUCED_MOTION ? 0 : dir*fly*7);
+      drawPirate(g, loseB.avatar, 0, 0, r, now, fly > 0 ? 'shock' : 'angry', false);
+      g.restore();
+    }
+    // winner: stands tall, grinning, then strides to the center of the deck
+    const wob = 1 + (REDUCED_MOTION ? 0 : Math.sin(now*3)*0.03);
+    const slide = clamp((tt - 1.8)/0.45, 0, 1);
+    const se = slide*slide*(3 - 2*slide);            // smoothstep
+    const wx = winX + (W/2 - winX)*se;
+    drawPirate(g, winB.avatar, wx, cy, r*wob, now, 'smile', now < b.blinkUntil);
+    // the blast
+    if (tt >= 0.5 && tt <= 1.0) drawBoom(g, loseX, cy, r*0.85, (tt-0.5)/0.5);
+    if (!this.overBoomed && tt >= 0.5){ this.overBoomed = true; play('boom', 1); }
+    // declaration
+    const dt = clamp((tt - 1.15)/0.35, 0, 1);
+    if (dt > 0){
+      g.globalAlpha = dt;
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      // per-viewer verdict: unmistakable even when both picked the same pirate
+      const vfs = Math.min(W*0.12, 48)*(0.85 + dt*0.15);
+      g.font = `900 ${Math.round(vfs)}px Georgia, serif`;
+      g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 7;
+      const verdict = iWon ? 'VICTORY!' : 'DEFEAT';
+      g.strokeText(verdict, W/2, H*0.12);
+      g.fillStyle = iWon ? '#8ae09a' : '#ff6a5a';
+      g.fillText(verdict, W/2, H*0.12);
+      const size = Math.min(W*0.1, 42)*(0.8 + dt*0.2);
+      g.font = `900 ${Math.round(size)}px Georgia, serif`;
+      g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 6;
+      g.strokeText(winB.character.name.toUpperCase() + ' WINS!', W/2, H*0.66);
+      g.fillStyle = '#ffd44d';
+      g.fillText(winB.character.name.toUpperCase() + ' WINS!', W/2, H*0.66);
+      g.font = `italic ${Math.round(Math.min(W*0.04, 18))}px Georgia, serif`;
+      g.fillStyle = (winB.theme && winB.theme.glow) || winB.accent;
+      g.fillText(winB.character.title, W/2, H*0.66 + size*0.75 + Math.min(W*0.04, 18)*0.7 + 4);
+      g.globalAlpha = 1;
+      if (!REDUCED_MOTION && Math.random() < 0.25){  // victory sparks
+        b.particles.push({ type:'spark', x:rand(W*0.2,W*0.8), y:H*0.66,
+          vx:rand(-90,90), vy:-rand(60,160), t0:now, life:rand(0.5,0.9),
+          size:rand(2,4.5), color:(winB.theme && winB.theme.glow) || '#ffd44d' });
+      }
+      for (const pp of b.particles) if (pp.type === 'spark') this.renderParticle(g, pp, now);
+    }
+  }
+  renderSelect(g, b, now){
+    g.font = `700 ${Math.round(Math.min(b.W*0.055, 30))}px Georgia, serif`;
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.strokeStyle = 'rgba(0,0,0,0.7)'; g.lineWidth = 5;
+    g.strokeText('CHOOSE YER PIRATE', b.W/2, b.H*0.15);
+    g.fillStyle = '#e8c469';
+    g.fillText('CHOOSE YER PIRATE', b.W/2, b.H*0.15);
+    for (let i=0;i<CHARACTERS.length;i++){
+      const c = CHARACTERS[i], rc = this.cardRect(b, i);
+      const sel = b.charIdx === i;
+      const dim = b.charIdx != null && !sel;
+      g.globalAlpha = dim ? 0.45 : 1;
+      g.fillStyle = 'rgba(20,12,6,0.78)';
+      g.beginPath();
+      g.roundRect ? g.roundRect(rc.x, rc.y, rc.w, rc.h, 10) : g.rect(rc.x, rc.y, rc.w, rc.h);
+      g.fill();
+      g.strokeStyle = sel ? '#ffd44d' : 'rgba(232,196,105,0.35)';
+      g.lineWidth = sel ? 3 : 1.5;
+      g.beginPath();
+      g.roundRect ? g.roundRect(rc.x, rc.y, rc.w, rc.h, 10) : g.rect(rc.x, rc.y, rc.w, rc.h);
+      g.stroke();
+      const pr = rc.w*0.26;
+      drawPirate(g, AVATARS[c.avatar], rc.x + rc.w/2, rc.y + rc.h*0.3, pr, now,
+                 sel ? 'smile' : 'idle', now < b.blinkUntil);
+      g.textAlign='center'; g.textBaseline='middle';
+      // stack name / title / icons by font size so they never collide
+      const nameFs = Math.round(Math.min(rc.w*0.115, rc.h*0.085));
+      const titleFs = Math.round(nameFs*0.72);
+      const nameY = rc.y + rc.h*0.56 + pr*0.2;
+      const titleY = nameY + nameFs*0.75 + titleFs*0.62;
+      const iconsY = titleY + titleFs*0.9 + rc.w*0.12;
+      g.font = `700 ${nameFs}px Georgia, serif`;
+      g.fillStyle = sel ? '#ffd44d' : '#e8c469';
+      g.fillText(c.name.toUpperCase(), rc.x + rc.w/2, nameY);
+      g.font = `italic ${titleFs}px Georgia, serif`;
+      g.fillStyle = '#c9b98d';
+      g.fillText(c.title, rc.x + rc.w/2, titleY);
+      drawAbilityIcon(g, c.basic, rc.x + rc.w/2 - rc.w*0.14, iconsY, rc.w*0.1);
+      drawAbilityIcon(g, c.ult, rc.x + rc.w/2 + rc.w*0.14, iconsY, rc.w*0.1);
+      g.globalAlpha = 1;
+    }
+    g.font = `600 ${Math.round(Math.min(b.W*0.035, 17))}px Georgia, serif`;
+    g.fillStyle = '#c9b98d';
+    const msg = this.phase === 'countdown' ? 'READY! HOIST THE COLOURS…'
+      : b.charIdx == null ? 'tap a card · left icon = quick trick · right icon = ultimate'
+      : 'waiting for the enemy…';
+    g.fillText(msg, b.W/2, b.H*0.26 + this.cardRect(b,0).h + Math.min(b.H*0.07, 34));
+  }
+}
+
+/* ---------------- boot ---------------- */
+const legend = document.getElementById('legend');
+const abIcon = ab => ab.img
+  ? `<img src="${assetUrl(ab.img)}" alt="" style="width:17px;height:17px;border-radius:50%;vertical-align:-3px">`
+  : ab.icon;
+legend.innerHTML = CHARACTERS.map(c =>
+  `<div class="pu"><div class="ico">${c.accentIcon}</div><div>
+    <div class="nm">${c.name} <span style="opacity:.75;text-transform:none">${c.title}</span></div>
+    <div class="ds">${abIcon(c.basic)} <b>${c.basic.name}</b> (${c.basic.cd}s cooldown) — ${c.basic.desc}</div>
+    <div class="ds">${abIcon(c.ult)} <b>${c.ult.name}</b> (ultimate) — ${c.ult.desc}</div>
+  </div></div>`
+).join('');
+
+function drawFacesPreview(){
+  const cv = document.getElementById('facesPreview');
+  const n = BUTTON_KINDS.length, cell = 52, pad = 8;
+  const cols = Math.min(n, 8), rows = Math.ceil(n/cols);   // wrap wide rosters
+  cv.width = cols*cell; cv.height = rows*(cell) + pad;
+  const g = cv.getContext('2d');
+  BUTTON_KINDS.forEach((k, i)=>{
+    const x = (i%cols)*cell + cell/2, y = Math.floor(i/cols)*cell + cell/2, r = cell*0.44;
+    drawButtonFace(g, x, y, r, k, i*7);
+  });
+}
+
+const game = new Game(document.getElementById('game'));
+window.game = game; // exposed for debugging / automated tests
+
+/* ---------------- fullscreen (mobile) ----------------
+   Entered on the start/replay gesture so the URL and toolbar chrome
+   stop eating the board; the ⛶ chip in the divider toggles it.
+   iPhone Safari has no Fullscreen API — there the Add-to-Home-Screen
+   hint plus the apple-mobile-web-app meta tags are the path. */
+const FS = {
+  supported(){
+    const el = document.documentElement;
+    return !!(el.requestFullscreen || el.webkitRequestFullscreen) &&
+           (document.fullscreenEnabled || document.webkitFullscreenEnabled) !== false;
+  },
+  active(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); },
+  enter(){
+    if (!this.supported() || this.active()) return;
+    const el = document.documentElement;
+    try {
+      const p = el.requestFullscreen
+        ? el.requestFullscreen({ navigationUI:'hide' })
+        : el.webkitRequestFullscreen();
+      if (p && p.catch) p.catch(()=>{});
+    } catch(e){}
+    try {
+      if (screen.orientation && screen.orientation.lock)
+        screen.orientation.lock('portrait').catch(()=>{});
+    } catch(e){}
+  },
+  exit(){
+    try {
+      const p = document.exitFullscreen ? document.exitFullscreen()
+        : document.webkitExitFullscreen && document.webkitExitFullscreen();
+      if (p && p.catch) p.catch(()=>{});
+    } catch(e){}
+  },
+};
+const fsBtn = document.getElementById('fsBtn');
+function syncFs(){
+  fsBtn.hidden = !FS.supported();
+  fsBtn.title = FS.active() ? 'Exit full screen' : 'Full screen';
+  game.resize();
+}
+fsBtn.addEventListener('click', ()=>{ FS.active() ? FS.exit() : FS.enter(); });
+for (const ev of ['fullscreenchange','webkitfullscreenchange'])
+  document.addEventListener(ev, syncFs);
+syncFs();
+if (!FS.supported() && /iPhone|iPad|iPod/.test(navigator.userAgent))
+  document.getElementById('iosHint').hidden = false;
+
+loadAssets(()=>{
+  game.resize();        // re-bake plank backgrounds with the real texture
+  drawFacesPreview();   // redraw the start-screen preview with any custom icons
+});
+probeCharSounds();      // discover any character voice/SFX files that exist
+drawFacesPreview();     // draw immediately too (procedural until assets load)
+
+document.getElementById('startBtn').addEventListener('click', ()=>{
+  Snd.ensure();
+  preloadSfx();
+  Music.start();
+  FS.enter();
+  document.getElementById('startOverlay').hidden = true;
+  game.enterSelect();
+});
+document.getElementById('againBtn').addEventListener('click', ()=>{
+  Snd.ensure();
+  FS.enter();
+  document.getElementById('winOverlay').hidden = true;
+  game.enterSelect();
+});
+</script>
+</body>
+</html>
