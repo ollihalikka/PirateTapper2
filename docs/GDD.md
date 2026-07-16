@@ -187,6 +187,12 @@ Reactions (synced with the original game's recorded voice grunts):
 | Cast ability / wave clear | grin | — / smile |
 | Match end | winner grins, loser fumes (permanent) | smile / angry |
 
+Every character also has **drop-in event sound slots**
+(`assets/voices/<charId>/`): select, match start, five random hurt takes
+(throttled to ~1/1.2 s), basic-ability voice + SFX, the ult boarding taunt,
+victory, and defeat — files play automatically when added, with the stock
+grunts as fallback per slot.
+
 Plus idle bobbing and randomized blinks. The three characters now use painted
 portrait art (`assets/characters/<id>.png`: `redbeard`, `inkeye`,
 `whitedeath`), which replaces the procedural face; the canvas-drawn pirate
@@ -217,9 +223,8 @@ Inkeye & White Death = p2 (adding a third voice set is a `VOICES` entry + files)
   of the screen, then "<CHARACTER> WINS!" is declared with victory sparks
   and the winner's portrait strides to the center of each play area. Each
   board also shows a per-viewer verdict — green VICTORY! on the winner's
-  half, red DEFEAT on the loser's — and the winner's portrait is ringed in
-  their player color, so even a mirror match (both players on the same
-  character) is unambiguous. The
+  half, red DEFEAT on the loser's — so even a mirror match (both players on
+  the same character) is unambiguous. The
   rematch menu is a light translucent layer (quote + Run It Back only —
   the on-canvas declarations carry the winner's name, shown once per
   board). The winner is always named by character, not player number.

@@ -152,8 +152,12 @@ picks a set; the engine plays a random take for the matching mood.
 - **Add a new voice:** add its id to `VOICES` in `index.html`, drop
   `<id>-angry1.mp3` … `<id>-smile2.mp3` (4 moods × 2 takes = 8 files), and set
   a character's `voice` to that id.
-- **Taunts** (planned, §Roadmap): same idea, a `<voiceId>-taunt<take>.mp3`
-  set fired by the emote button.
+- **Character event sounds** (preferred for new recordings): per-character
+  drop-in slots at `web/assets/voices/<charId>/<slot>.mp3` — `select`,
+  `start`, `hurt1`–`hurt5` (random), `basic_voice` + `basic_fx`, `taunt`
+  (the ult boarding gloat), `victory`, `defeat`. Files play automatically
+  when present; missing slots fall back to the grunt sets above. See
+  `web/assets/voices/README.md` for the full table.
 
 Non-voice SFX (`pop`, `wrong`, `boom`, `click`, `cast`) and music
 (`music-tavern.mp3`, `music-battle.mp3`, `sea-waves.mp3`) live flat in

@@ -309,6 +309,60 @@ function preloadSfx(){
   }
 }
 
+/* ---------------- character event sounds ----------------
+   Drop-in voice/SFX slots per character. Add a file at
+   assets/voices/<avatarId>/<slot>.mp3 and it plays automatically;
+   missing slots fall back to the current sounds. avatarIds:
+   redbeard, inkeye, whitedeath. Slots:
+     select.mp3                 picked on the select screen
+     start.mp3                  match begins (after the VS splash)
+     hurt1.mp3 … hurt5.mp3      random one when the character loses health
+     basic_voice.mp3            basic ability voice line
+     basic_fx.mp3               basic ability sound effect (plays with voice)
+     taunt.mp3                  the ult boarding gloat
+     victory.mp3 / defeat.mp3   match end */
+const CHAR_SOUND_SLOTS = {
+  select: ['select.mp3'],
+  start:  ['start.mp3'],
+  hurt:   ['hurt1.mp3','hurt2.mp3','hurt3.mp3','hurt4.mp3','hurt5.mp3'],
+  basic_voice: ['basic_voice.mp3'],
+  basic_fx:    ['basic_fx.mp3'],
+  taunt:  ['taunt.mp3'],
+  victory:['victory.mp3'],
+  defeat: ['defeat.mp3'],
+};
+const charSfx = {};   // 'voices/<id>/<file>' -> { el, ok: true|false|null }
+function probeCharSounds(){
+  for (const av of AVATARS){
+    for (const files of Object.values(CHAR_SOUND_SLOTS)){
+      for (const f of files){
+        const path = 'voices/' + av.id + '/' + f;
+        if (!assetExists(path)){ charSfx[path] = { ok:false }; continue; }
+        const el = new Audio(assetUrl(path));
+        const entry = charSfx[path] = { el, ok:null };
+        el.addEventListener('canplaythrough', ()=>{ entry.ok = true; }, { once:true });
+        el.addEventListener('error', ()=>{ entry.ok = false; }, { once:true });
+        el.preload = 'auto';
+      }
+    }
+  }
+}
+/* Play a character sound slot; returns false if no file exists so the
+   caller can fall back to the stock sound. Multi-take slots (hurt)
+   pick randomly among the takes that loaded. */
+function playCharSound(av, slot, vol=1){
+  const files = CHAR_SOUND_SLOTS[slot];
+  if (!files) return false;
+  const avail = files
+    .map(f => charSfx['voices/' + av.id + '/' + f])
+    .filter(e => e && e.ok && e.el);
+  if (!avail.length) return false;
+  const el = avail[Math.floor(Math.random()*avail.length)].el.cloneNode();
+  el.volume = clamp(vol, 0, 1);
+  el.play().catch(()=>{});
+  return true;
+}
+
 /* Music: the two repo tracks alternating forever, exactly like the
    Unity MusicPlayer, over a low sea-waves ambience. */
 const Music = {
@@ -761,6 +815,7 @@ class Board {
     this.nextThemeAt = 0;
     this._fxLast = 0;
     this.intrudedUntil = 0;   // enemy pirate is standing on this deck
+    this.hurtSoundCdUntil = 0;
     this.basicCdUntil = 0;
     this.ultCharge = 0;
     this.waveMistap = false;
@@ -1227,7 +1282,7 @@ class Game {
     b.planks = makePlanks(b.W, b.H, b.theme.glow, b.theme.deck);  // the character claims the ship
     b.setMood('smile', 1.4, now);
     play('click', 0.7);
-    play(b.voice + '-smile', 0.9);
+    if (!playCharSound(b.avatar, 'select', 0.95)) play(b.voice + '-smile', 0.9);
     if (this.boards.every(x => x.charIdx != null)){
       this.phase = 'countdown';
       this.vsStartAt = now;
@@ -1245,6 +1300,7 @@ class Game {
       b.basicCdUntil = now + BASIC_FIRST_CD;
       b.ultCharge = 0;
       b.begin(now);
+      playCharSound(b.avatar, 'start', 0.9);   // battle cry, if the character has one
     }
   }
   /* screen → board-local. Board 1 (top) is rotated 180° so its player
@@ -1267,7 +1323,8 @@ class Game {
     if (which === 'basic'){
       if (now < me.basicCdUntil){ Snd.deny(); return; }
       me.basicCdUntil = now + ch.basic.cd;
-      play('click', 0.8);
+      playCharSound(me.avatar, 'basic_voice', 0.95);
+      if (!playCharSound(me.avatar, 'basic_fx', 0.9)) play('click', 0.8);
       me.setMood('smile', 0.8, now);
       me.addFloat(ch.basic.icon + ' ' + ch.basic.name + '!', '#e8c469', me.W/2, me.hudH + 30, now);
       switch (ch.id){
@@ -1311,7 +1368,10 @@ class Game {
     if (!this.running) return;
     const b = this.boards[boardIdx];
     b.hp = Math.max(0, b.hp - amt);
-    b.hpFlashUntil = performance.now()/1000 + 0.4;
+    const tNow = performance.now()/1000;
+    b.hpFlashUntil = tNow + 0.4;
+    if (tNow >= b.hurtSoundCdUntil && playCharSound(b.avatar, 'hurt', 0.85))
+      b.hurtSoundCdUntil = tNow + 1.2;
     const fx = x==null ? b.W - 60 : x;
     const fy = y==null ? b.hudH + 26 : y;
     b.addFloat('-' + amt, '#ff5a4d', fx, fy, performance.now()/1000);
@@ -1327,8 +1387,10 @@ class Game {
     const winB = this.boards[winnerIdx], loseB = this.boards[1-winnerIdx];
     winB.setMood('smile', 9999, now);
     loseB.setMood('angry', 9999, now);
-    play(winB.voice + '-smile', 1);
-    setTimeout(()=>{ play(loseB.voice + '-angry', 0.95); }, 500);
+    if (!playCharSound(winB.avatar, 'victory', 1)) play(winB.voice + '-smile', 1);
+    setTimeout(()=>{
+      if (!playCharSound(loseB.avatar, 'defeat', 0.95)) play(loseB.voice + '-angry', 0.95);
+    }, 500);
     setTimeout(()=>{ Snd.fanfare(); }, 1500);
     const taunts = [
       'The loser walks the plank. Slowly. For dramatic effect.',
@@ -1356,8 +1418,8 @@ class Game {
         const caster = this.boards[it.caster], victim = this.boards[it.target];
         const k = now - it.t0;
         if (!it.taunted && k >= it.tIn){
-          it.taunted = true;
-          play(caster.voice + '-smile', 1);          // the taunt, in their face
+          it.taunted = true;                          // the taunt, in their face
+          if (!playCharSound(caster.avatar, 'taunt', 1)) play(caster.voice + '-smile', 1);
         }
         if (!it.fired && k >= it.tIn + it.hover + it.tOut){
           it.fired = true;
@@ -1954,12 +2016,6 @@ class Game {
     const se = slide*slide*(3 - 2*slide);            // smoothstep
     const wx = winX + (W/2 - winX)*se;
     drawPirate(g, winB.avatar, wx, cy, r*wob, now, 'smile', now < b.blinkUntil);
-    // ring the winner in their player color — the tiebreaker in mirror matches
-    g.strokeStyle = PLAYER_ACCENT[this.winner];
-    g.lineWidth = 5;
-    g.globalAlpha = 0.85 + (REDUCED_MOTION ? 0 : Math.sin(now*4)*0.15);
-    g.beginPath(); g.arc(wx, cy, r*wob + 7, 0, TAU); g.stroke();
-    g.globalAlpha = 1;
     // the blast
     if (tt >= 0.5 && tt <= 1.0) drawBoom(g, loseX, cy, r*0.85, (tt-0.5)/0.5);
     if (!this.overBoomed && tt >= 0.5){ this.overBoomed = true; play('boom', 1); }
@@ -2123,6 +2179,7 @@ loadAssets(()=>{
   game.resize();        // re-bake plank backgrounds with the real texture
   drawFacesPreview();   // redraw the start-screen preview with any custom icons
 });
+probeCharSounds();      // discover any character voice/SFX files that exist
 drawFacesPreview();     // draw immediately too (procedural until assets load)
 
 document.getElementById('startBtn').addEventListener('click', ()=>{
