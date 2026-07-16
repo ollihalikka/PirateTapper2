@@ -42,48 +42,71 @@
   }
   .eyebrow{
     font-family:Georgia, "Times New Roman", serif;
-    font-size:clamp(12px,1.6vh,15px); letter-spacing:.38em; text-transform:uppercase;
-    color:var(--gold-dim); margin-bottom:10px;
+    font-size:clamp(11px,1.5vh,13px); letter-spacing:.42em; text-transform:uppercase;
+    color:var(--gold-dim); margin-bottom:4px;
   }
   h1{
     font-family:Georgia, "Times New Roman", serif;
-    font-weight:700; line-height:.95; text-wrap:balance;
-    font-size:clamp(38px,7.5vh,64px); letter-spacing:.02em;
+    font-weight:700; line-height:.9; text-wrap:balance; text-transform:uppercase;
+    font-size:clamp(42px,8.4vh,72px); letter-spacing:.015em;
     color:var(--gold);
-    text-shadow:0 2px 0 #4a3413, 0 6px 24px rgba(232,196,105,.18);
+    background:linear-gradient(#fbe7a6, #e8c469 42%, #b98f38);
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 2px 0 #4a3413) drop-shadow(0 8px 26px rgba(232,196,105,.28));
   }
-  h1 .vs{ display:block; font-size:.42em; letter-spacing:.5em; color:var(--parch-dim); margin:.45em 0 .15em; }
-  .rules{
-    margin:clamp(14px,3vh,26px) auto; max-width:44ch;
-    font-size:clamp(13px,1.9vh,15.5px); line-height:1.55; color:var(--parch-dim);
-    text-align:left; display:grid; gap:8px;
+  h1 .vs{
+    display:block; -webkit-text-fill-color:var(--parch-dim); color:var(--parch-dim);
+    font-size:.3em; letter-spacing:.66em; text-indent:.66em; margin-top:.6em; filter:none;
   }
-  .rules b{ color:var(--parch); font-weight:600; }
-  #facesPreview{ display:block; width:100%; max-width:420px; margin:2px auto 0; height:auto; }
+  .tagline{
+    margin:clamp(12px,2.4vh,20px) auto 0; max-width:32ch;
+    font-family:Georgia, serif; font-style:italic;
+    font-size:clamp(14px,2vh,17.5px); line-height:1.4; color:var(--parch-dim);
+  }
+  .pillars{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(8px,2vw,14px);
+    margin:clamp(16px,3.2vh,28px) 0;
+  }
+  .pillar{
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    padding:clamp(11px,2vh,16px) 6px; border-radius:11px;
+    background:rgba(20,12,6,.4); border:1px solid rgba(232,196,105,.18);
+  }
+  .pillar .pi{ font-size:clamp(21px,3.1vh,27px); filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); }
+  .pillar b{
+    font-family:Georgia, serif; font-size:clamp(12px,1.7vh,14px);
+    letter-spacing:.13em; text-transform:uppercase; color:var(--gold);
+  }
+  .pillar span:last-child{ font-size:clamp(10.5px,1.5vh,12px); line-height:1.28; color:var(--parch-dim); }
+  .faces{ margin:clamp(4px,1.4vh,12px) auto clamp(6px,1.6vh,14px); }
+  #facesPreview{
+    display:block; width:100%; max-width:340px; height:auto; margin:0 auto;
+    border-radius:10px; opacity:.96;
+  }
   .faces-caption{
-    font-family:Georgia, serif; font-size:11px; letter-spacing:.22em; text-transform:uppercase;
-    color:var(--gold-dim); margin-top:6px;
+    font-family:Georgia, serif; font-size:10.5px; letter-spacing:.26em; text-transform:uppercase;
+    color:var(--gold-dim); margin-top:9px;
   }
-  .legend{
-    margin:clamp(12px,2.5vh,22px) 0; border-top:1px solid rgba(232,196,105,.25); border-bottom:1px solid rgba(232,196,105,.25);
-    padding:clamp(10px,2vh,18px) 2px;
-    display:grid; grid-template-columns:1fr; gap:12px; text-align:left;
-  }
-  .legend .pu{ display:flex; gap:9px; align-items:flex-start; }
-  .legend .ico{ font-size:20px; line-height:1.15; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
-  .legend .nm{ font-family:Georgia, serif; font-size:12.5px; letter-spacing:.06em; color:var(--gold); text-transform:uppercase; }
-  .legend .ds{ font-size:11.5px; line-height:1.35; color:var(--parch-dim); }
   .btn{
     font-family:Georgia, "Times New Roman", serif;
-    font-size:clamp(17px,2.6vh,21px); letter-spacing:.14em; text-transform:uppercase;
-    color:#241708; background:linear-gradient(#f3d382, #d8ad4e);
+    font-size:clamp(18px,2.8vh,22px); letter-spacing:.16em; text-transform:uppercase;
+    color:#241708; background:linear-gradient(#f7dd92, #d8ad4e);
     border:1px solid #7c6127; outline:3px solid rgba(232,196,105,.35); outline-offset:3px;
-    border-radius:6px; padding:.75em 1.9em; cursor:pointer;
+    border-radius:7px; padding:.8em 2.1em; cursor:pointer;
     box-shadow:0 4px 0 #6b5322, 0 10px 30px rgba(0,0,0,.45);
   }
+  #startBtn{ margin-top:clamp(4px,1.4vh,12px); }
   .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #6b5322; }
   .btn:focus-visible{ outline:3px solid var(--parch); }
   .hint{ margin-top:14px; font-size:11.5px; letter-spacing:.08em; color:#6f7f92; }
+  @media (prefers-reduced-motion: no-preference){
+    #startBtn{ animation:btnglow 2.6s ease-in-out infinite; }
+    @keyframes btnglow{
+      0%,100%{ box-shadow:0 4px 0 #6b5322, 0 10px 30px rgba(0,0,0,.45); }
+      50%{ box-shadow:0 4px 0 #6b5322, 0 12px 42px rgba(232,196,105,.42); }
+    }
+  }
 
   #fsBtn{
     position:fixed; right:10px; top:50%; transform:translateY(-50%);
@@ -98,9 +121,7 @@
   #fsBtn[hidden]{ display:none; }
 
   #winOverlay{ background:rgba(9,7,4,0.45); }
-  #winTaunt{ font-size:clamp(15px,2.2vh,19px); }
-  #winTaunt{ margin:18px 0 26px; font-size:clamp(14px,2vh,17px); color:var(--parch-dim); font-style:italic; }
-  .flag{ font-size:clamp(40px,8vh,64px); margin-bottom:6px; filter:drop-shadow(0 4px 12px rgba(0,0,0,.6)); }
+  .flag{ font-size:clamp(44px,8.5vh,68px); margin-bottom:2px; filter:drop-shadow(0 5px 16px rgba(0,0,0,.6)); }
   @media (prefers-reduced-motion: no-preference){
     .flag{ animation:bob 2.6s ease-in-out infinite; }
     @keyframes bob{ 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)} }
@@ -115,19 +136,20 @@
   <div class="overlay" id="startOverlay">
     <div class="panel">
       <div class="flag">🏴‍☠️</div>
-      <div class="eyebrow">A duel of memory &amp; sabotage</div>
-      <h1>Pirate Tapper<span class="vs">— showdown —</span></h1>
-      <div class="rules">
-        <div>⚓ <b>Two pirates, one screen.</b> Each of ye taps on yer own half — sit facing each other.</div>
-        <div>⚓ Buttons surface one by one — <b>watch the order they appear.</b> Then pop them in that same order. No numbers, no hints: only the faces, and yer memory.</div>
-        <div>⚓ Every correct pop cannonballs the enemy's health. Too slow to clear a wave? <b>−30.</b> Wrong button or bare deck? <b>−10.</b></div>
-        <div>⚓ <b>Choose yer pirate.</b> Each has a quick trick on a cooldown, and an <b>ultimate</b> charged by clearing waves — the faster and cleaner the clear, the more it charges.</div>
+      <div class="eyebrow">Two pirates · one deck</div>
+      <h1>Pirate Tapper<span class="vs">Showdown</span></h1>
+      <p class="tagline">A duel of memory, sabotage &amp; speed — sit facing each other and pop yer marks in the order they surface.</p>
+      <div class="pillars">
+        <div class="pillar"><span class="pi">🧠</span><b>Memory</b><span>Watch the order, pop it back</span></div>
+        <div class="pillar"><span class="pi">⚔️</span><b>Sabotage</b><span>Freeze, curse &amp; bombard yer foe</span></div>
+        <div class="pillar"><span class="pi">⚡</span><b>Speed</b><span>Faster, cleaner clears hit harder</span></div>
       </div>
-      <canvas id="facesPreview"></canvas>
-      <div class="faces-caption">The marks of the deep</div>
-      <div class="legend" id="legend"></div>
+      <div class="faces">
+        <canvas id="facesPreview"></canvas>
+        <div class="faces-caption">The marks ye must remember</div>
+      </div>
       <button class="btn" id="startBtn">Start the Showdown</button>
-      <div class="hint">Best on a touchscreen laid flat between two players · mouse works for practice · sound on!</div>
+      <div class="hint">Best on a touchscreen laid flat between two players · sound on</div>
       <div class="hint" id="iosHint" hidden>iPhone: for true full screen, open the Share menu and “Add to Home Screen”.</div>
     </div>
   </div>
@@ -355,11 +377,11 @@ function playCharSound(av, slot, vol=1, onEnd=null){
   let called = false;
   const done = ()=>{ if (onEnd && !called){ called = true; onEnd(); } };
   const files = CHAR_SOUND_SLOTS[slot];
-  if (!files){ done(); return false; }
+  if (!files){ done(); return null; }
   const avail = files
     .map(f => charSfx['voices/' + av.id + '/' + f])
     .filter(e => e && e.ok && e.el);
-  if (!avail.length){ done(); return false; }
+  if (!avail.length){ done(); return null; }
   const el = avail[Math.floor(Math.random()*avail.length)].el.cloneNode();
   el.volume = clamp(vol, 0, 1);
   if (onEnd){
@@ -368,7 +390,7 @@ function playCharSound(av, slot, vol=1, onEnd=null){
     setTimeout(done, 8000);   // safety net so a stuck clip never stalls the flow
   }
   el.play().catch(()=>{ done(); });
-  return true;
+  return el;
 }
 
 /* Music: the two repo tracks alternating forever, exactly like the
@@ -1321,21 +1343,26 @@ class Game {
     b.theme = CHARACTERS[ci].theme;
     b.planks = makePlanks(b.W, b.H, b.theme.glow, b.theme.deck);  // the character claims the ship
     b.setMood('smile', 1.2, now);
-    play('click', 0.7);
+    play('click', 0.55);
+    // the pirate calls out on every tap; cut off the prior preview so quick
+    // browsing doesn't pile voices up. This same cry also gates the VS screen.
+    if (b._selPreview){ try { b._selPreview.pause(); } catch(e){} }
+    const token = (b.selToken = (b.selToken || 0) + 1);
+    b.selectSoundDone = false;
+    b._selPreview = playCharSound(b.avatar, 'select', 0.95, ()=>{
+      if (b.selToken !== token) return;     // a newer pick has superseded this one
+      b.selectSoundDone = true;
+      this.maybeStartCountdown(performance.now()/1000);
+    });
   }
-  /* Lock the pick in. The pirate calls out; once BOTH players are ready and
-     both cries have played, the VS splash begins. */
+  /* Lock the pick in. Once BOTH players are ready and both select cries have
+     played out, the VS splash begins. */
   setReady(boardIdx, now){
     const b = this.boards[boardIdx];
     if (this.phase !== 'select' || b.charIdx == null || b.ready) return;
     b.ready = true;
-    b.selectSoundDone = false;
     play('cast', 0.85);
     b.setMood('smile', 1.6, now);
-    playCharSound(b.avatar, 'select', 0.95, ()=>{
-      b.selectSoundDone = true;
-      this.maybeStartCountdown(performance.now()/1000);
-    });
     this.maybeStartCountdown(now);
   }
   /* Advance to the VS splash only once BOTH players have readied up AND both
@@ -2045,11 +2072,6 @@ class Game {
     g.strokeText(foe.character.name.toUpperCase(), fx, nameY);
     g.fillStyle = (foe.theme && foe.theme.glow) || foe.accent;
     g.fillText(foe.character.name.toUpperCase(), fx, nameY);
-    g.font = `italic ${Math.round(Math.min(W*0.035, 16))}px Georgia, serif`;
-    g.fillStyle = '#c9b98d';
-    const vsTitleY = nameY + Math.min(W*0.055, 26)*0.75 + Math.min(W*0.035, 16)*0.7 + 3;
-    g.fillText(b.character.title, mx, vsTitleY);
-    g.fillText(foe.character.title, fx, vsTitleY);
     const pulse = 1 + (REDUCED_MOTION ? 0 : Math.sin(now*6)*0.06);
     g.globalAlpha = ease;
     g.font = `900 ${Math.round(Math.min(W*0.16, H*0.18)*pulse)}px Georgia, serif`;
@@ -2125,9 +2147,6 @@ class Game {
       g.strokeText(winB.character.name.toUpperCase() + ' WINS!', W/2, H*0.66);
       g.fillStyle = '#ffd44d';
       g.fillText(winB.character.name.toUpperCase() + ' WINS!', W/2, H*0.66);
-      g.font = `italic ${Math.round(Math.min(W*0.04, 18))}px Georgia, serif`;
-      g.fillStyle = (winB.theme && winB.theme.glow) || winB.accent;
-      g.fillText(winB.character.title, W/2, H*0.66 + size*0.75 + Math.min(W*0.04, 18)*0.7 + 4);
       g.globalAlpha = 1;
       if (!REDUCED_MOTION && Math.random() < 0.25){  // victory sparks
         b.particles.push({ type:'spark', x:rand(W*0.2,W*0.8), y:H*0.66,
@@ -2160,24 +2179,15 @@ class Game {
       g.beginPath();
       g.roundRect ? g.roundRect(rc.x, rc.y, rc.w, rc.h, 10) : g.rect(rc.x, rc.y, rc.w, rc.h);
       g.stroke();
-      const pr = rc.w*0.26;
-      drawPirate(g, AVATARS[c.avatar], rc.x + rc.w/2, rc.y + rc.h*0.32, pr, now,
+      const pr = Math.min(rc.w*0.32, rc.h*0.32);
+      drawPirate(g, AVATARS[c.avatar], rc.x + rc.w/2, rc.y + rc.h*0.42, pr, now,
                  sel ? 'smile' : 'idle', now < b.blinkUntil);
       g.textAlign='center'; g.textBaseline='middle';
-      // stack name / title / icons by font size so they never collide
-      const nameFs = Math.round(Math.min(rc.w*0.115, rc.h*0.1));
-      const titleFs = Math.round(nameFs*0.72);
-      const nameY = rc.y + rc.h*0.66;
-      const titleY = nameY + nameFs*0.68 + titleFs*0.6;
-      const iconsY = titleY + titleFs*0.7 + rc.w*0.12;
+      // just the name now — abilities are shown in the summary below on tap
+      const nameFs = Math.round(Math.min(rc.w*0.135, rc.h*0.12));
       g.font = `700 ${nameFs}px Georgia, serif`;
       g.fillStyle = sel ? '#ffd44d' : '#e8c469';
-      g.fillText(c.name.toUpperCase(), rc.x + rc.w/2, nameY);
-      g.font = `italic ${titleFs}px Georgia, serif`;
-      g.fillStyle = '#c9b98d';
-      g.fillText(c.title, rc.x + rc.w/2, titleY);
-      drawAbilityIcon(g, c.basic, rc.x + rc.w/2 - rc.w*0.14, iconsY, rc.w*0.1);
-      drawAbilityIcon(g, c.ult, rc.x + rc.w/2 + rc.w*0.14, iconsY, rc.w*0.1);
+      g.fillText(c.name.toUpperCase(), rc.x + rc.w/2, rc.y + rc.h*0.78);
       g.globalAlpha = 1;
     }
     const rr = this.readyRect(b);
@@ -2240,18 +2250,6 @@ class Game {
 }
 
 /* ---------------- boot ---------------- */
-const legend = document.getElementById('legend');
-const abIcon = ab => ab.img
-  ? `<img src="${assetUrl(ab.img)}" alt="" style="width:17px;height:17px;border-radius:50%;vertical-align:-3px">`
-  : ab.icon;
-legend.innerHTML = CHARACTERS.map(c =>
-  `<div class="pu"><div class="ico">${c.accentIcon}</div><div>
-    <div class="nm">${c.name} <span style="opacity:.75;text-transform:none">${c.title}</span></div>
-    <div class="ds">${abIcon(c.basic)} <b>${c.basic.name}</b> (${c.basic.cd}s cooldown) — ${c.basic.desc}</div>
-    <div class="ds">${abIcon(c.ult)} <b>${c.ult.name}</b> (ultimate) — ${c.ult.desc}</div>
-  </div></div>`
-).join('');
-
 function drawFacesPreview(){
   const cv = document.getElementById('facesPreview');
   const n = BUTTON_KINDS.length, cell = 52, pad = 8;
