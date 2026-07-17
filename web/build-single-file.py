@@ -19,7 +19,7 @@ ASSETS = os.path.join(HERE, 'assets')
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, 'pirate-tapper-showdown.single.html')
 
 MIME = {'.mp3': 'audio/mpeg', '.jpg': 'image/jpeg', '.png': 'image/png',
-        '.json': 'application/json'}
+        '.json': 'application/json', '.woff2': 'font/woff2'}
 
 # Walk assets/ recursively; key each file by its path relative to assets/
 # (forward slashes) so it matches assetUrl(f) at runtime. Non-asset files
