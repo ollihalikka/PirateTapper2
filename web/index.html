@@ -42,43 +42,55 @@
   }
   .eyebrow{
     font-family:Georgia, "Times New Roman", serif;
-    font-size:clamp(12px,1.6vh,15px); letter-spacing:.38em; text-transform:uppercase;
-    color:var(--gold-dim); margin-bottom:10px;
+    font-size:clamp(11px,1.5vh,13px); letter-spacing:.42em; text-transform:uppercase;
+    color:var(--gold-dim); margin-bottom:4px;
   }
-  h1{
-    font-family:Georgia, "Times New Roman", serif;
-    font-weight:700; line-height:.95; text-wrap:balance;
-    font-size:clamp(38px,7.5vh,64px); letter-spacing:.02em;
-    color:var(--gold);
-    text-shadow:0 2px 0 #4a3413, 0 6px 24px rgba(232,196,105,.18);
+  /* Start screen: the splash art is the whole show. The image is set from
+     JS via assetUrl() so the single-file build resolves it when inlined. */
+  #startOverlay{
+    display:block;
+    background:#0a0f18 center/cover no-repeat;
   }
-  h1 .vs{ display:block; font-size:.42em; letter-spacing:.5em; color:var(--parch-dim); margin:.45em 0 .15em; }
-  .rules{
-    margin:clamp(14px,3vh,26px) auto; max-width:44ch;
-    font-size:clamp(13px,1.9vh,15.5px); line-height:1.55; color:var(--parch-dim);
-    text-align:left; display:grid; gap:8px;
+  #startOverlay[hidden]{ display:none; }   /* the ID rule above outranks .overlay[hidden] */
+  #playBtn{
+    position:absolute;
+    right:max(clamp(14px,3.5vw,36px), env(safe-area-inset-right));
+    bottom:max(clamp(16px,3vh,48px), env(safe-area-inset-bottom));
+    width:clamp(60px,16vw,92px); height:clamp(60px,16vw,92px);
+    border-radius:50%; cursor:pointer; padding:0;
+    background:radial-gradient(circle at 35% 30%, #f9e09a, #d8ad4e 55%, #a5762c);
+    border:2px solid #7c6127;
+    outline:3px solid rgba(232,196,105,.4); outline-offset:4px;
+    box-shadow:0 5px 0 #6b5322, 0 14px 40px rgba(0,0,0,.6);
+    display:flex; align-items:center; justify-content:center;
   }
-  .rules b{ color:var(--parch); font-weight:600; }
-  #facesPreview{ display:block; width:100%; max-width:420px; margin:2px auto 0; height:auto; }
-  .faces-caption{
-    font-family:Georgia, serif; font-size:11px; letter-spacing:.22em; text-transform:uppercase;
-    color:var(--gold-dim); margin-top:6px;
+  #playBtn svg{
+    width:44%; height:44%; margin-left:7%;
+    fill:#241708; filter:drop-shadow(0 1px 0 rgba(255,240,200,.5));
   }
-  .legend{
-    margin:clamp(12px,2.5vh,22px) 0; border-top:1px solid rgba(232,196,105,.25); border-bottom:1px solid rgba(232,196,105,.25);
-    padding:clamp(10px,2vh,18px) 2px;
-    display:grid; grid-template-columns:1fr; gap:12px; text-align:left;
+  #playBtn:active{ transform:translateY(4px); box-shadow:0 1px 0 #6b5322, 0 8px 22px rgba(0,0,0,.5); }
+  #playBtn:focus-visible{ outline:3px solid var(--parch); }
+  @media (prefers-reduced-motion: no-preference){
+    #playBtn{ animation:playglow 2.4s ease-in-out infinite; }
+    @keyframes playglow{
+      0%,100%{ box-shadow:0 5px 0 #6b5322, 0 14px 40px rgba(0,0,0,.6); }
+      50%{ box-shadow:0 5px 0 #6b5322, 0 14px 52px rgba(232,196,105,.55); }
+    }
   }
-  .legend .pu{ display:flex; gap:9px; align-items:flex-start; }
-  .legend .ico{ font-size:20px; line-height:1.15; filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
-  .legend .nm{ font-family:Georgia, serif; font-size:12.5px; letter-spacing:.06em; color:var(--gold); text-transform:uppercase; }
-  .legend .ds{ font-size:11.5px; line-height:1.35; color:var(--parch-dim); }
+  #startOverlay .hint{
+    position:absolute; left:max(14px, env(safe-area-inset-left));
+    bottom:max(10px, env(safe-area-inset-bottom));
+    margin:0; text-align:left;
+    max-width:calc(100vw - clamp(60px,16vw,92px) - clamp(14px,3.5vw,36px) - 34px);
+    color:#cdd7e2; text-shadow:0 1px 3px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.7);
+  }
+  #startOverlay #iosHint{ bottom:calc(max(10px, env(safe-area-inset-bottom)) + 32px); }
   .btn{
     font-family:Georgia, "Times New Roman", serif;
-    font-size:clamp(17px,2.6vh,21px); letter-spacing:.14em; text-transform:uppercase;
-    color:#241708; background:linear-gradient(#f3d382, #d8ad4e);
+    font-size:clamp(18px,2.8vh,22px); letter-spacing:.16em; text-transform:uppercase;
+    color:#241708; background:linear-gradient(#f7dd92, #d8ad4e);
     border:1px solid #7c6127; outline:3px solid rgba(232,196,105,.35); outline-offset:3px;
-    border-radius:6px; padding:.75em 1.9em; cursor:pointer;
+    border-radius:7px; padding:.8em 2.1em; cursor:pointer;
     box-shadow:0 4px 0 #6b5322, 0 10px 30px rgba(0,0,0,.45);
   }
   .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #6b5322; }
@@ -97,13 +109,20 @@
   #fsBtn:active{ transform:translateY(-50%) scale(0.9); }
   #fsBtn[hidden]{ display:none; }
 
-  #winOverlay{ background:rgba(9,7,4,0.45); }
-  #winTaunt{ font-size:clamp(15px,2.2vh,19px); }
-  #winTaunt{ margin:18px 0 26px; font-size:clamp(14px,2vh,17px); color:var(--parch-dim); font-style:italic; }
-  .flag{ font-size:clamp(40px,8vh,64px); margin-bottom:6px; filter:drop-shadow(0 4px 12px rgba(0,0,0,.6)); }
-  @media (prefers-reduced-motion: no-preference){
-    .flag{ animation:bob 2.6s ease-in-out infinite; }
-    @keyframes bob{ 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)} }
+  /* end screen: one choice row per player, each facing its own side */
+  #winOverlay{ background:rgba(9,7,4,0.45); flex-direction:column; }
+  .rematch-half{
+    flex:1; width:100%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:clamp(10px,2vh,18px);
+  }
+  #rematchP2{ transform:rotate(180deg); }
+  .rematch-buttons{ display:flex; gap:clamp(12px,3vw,22px); }
+  .btn.small{ font-size:clamp(13px,2vh,17px); padding:.65em 1.2em; letter-spacing:.1em; }
+  .rematch-status{
+    font-family:Georgia, serif; font-style:italic;
+    font-size:clamp(13px,1.9vh,16px); color:var(--parch-dim);
+    min-height:1.3em;
   }
 </style>
 </head>
@@ -113,31 +132,29 @@
   <button id="fsBtn" hidden aria-label="Toggle full screen">⛶</button>
 
   <div class="overlay" id="startOverlay">
-    <div class="panel">
-      <div class="flag">🏴‍☠️</div>
-      <div class="eyebrow">A duel of memory &amp; sabotage</div>
-      <h1>Pirate Tapper<span class="vs">— showdown —</span></h1>
-      <div class="rules">
-        <div>⚓ <b>Two pirates, one screen.</b> Each of ye taps on yer own half — sit facing each other.</div>
-        <div>⚓ Buttons surface one by one — <b>watch the order they appear.</b> Then pop them in that same order. No numbers, no hints: only the faces, and yer memory.</div>
-        <div>⚓ Every correct pop cannonballs the enemy's health. Too slow to clear a wave? <b>−30.</b> Wrong button or bare deck? <b>−10.</b></div>
-        <div>⚓ <b>Choose yer pirate.</b> Each has a quick trick on a cooldown, and an <b>ultimate</b> charged by clearing waves — the faster and cleaner the clear, the more it charges.</div>
-      </div>
-      <canvas id="facesPreview"></canvas>
-      <div class="faces-caption">The marks of the deep</div>
-      <div class="legend" id="legend"></div>
-      <button class="btn" id="startBtn">Start the Showdown</button>
-      <div class="hint">Best on a touchscreen laid flat between two players · mouse works for practice · sound on!</div>
-      <div class="hint" id="iosHint" hidden>iPhone: for true full screen, open the Share menu and “Add to Home Screen”.</div>
-    </div>
+    <button id="playBtn" aria-label="Start the Showdown">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15c0 .8.9 1.3 1.6.9l12.2-7.5c.7-.4.7-1.4 0-1.8L8.6 3.6c-.7-.4-1.6.1-1.6.9z"/></svg>
+    </button>
+    <div class="hint">Best on a touchscreen laid flat between two players · sound on</div>
+    <div class="hint" id="iosHint" hidden>iPhone: for true full screen, open the Share menu and “Add to Home Screen”.</div>
   </div>
 
   <div class="overlay" id="winOverlay" hidden>
-    <div class="panel">
-      <div class="flag">🏴‍☠️</div>
+    <div class="rematch-half" id="rematchP2">
       <div class="eyebrow">The powder settles…</div>
-      <div id="winTaunt"></div>
-      <button class="btn" id="againBtn">Run It Back</button>
+      <div class="rematch-buttons">
+        <button class="btn small" data-side="1" data-choice="stop">Plz, no moar!</button>
+        <button class="btn small" data-side="1" data-choice="again">Rematch</button>
+      </div>
+      <div class="rematch-status"></div>
+    </div>
+    <div class="rematch-half" id="rematchP1">
+      <div class="eyebrow">The powder settles…</div>
+      <div class="rematch-buttons">
+        <button class="btn small" data-side="0" data-choice="stop">Plz, no moar!</button>
+        <button class="btn small" data-side="0" data-choice="again">Rematch</button>
+      </div>
+      <div class="rematch-status"></div>
     </div>
   </div>
 </div>
@@ -161,19 +178,20 @@ const TAU   = Math.PI*2;
 /* ---------------- tuning ---------------- */
 const MAX_HP = 300;
 const AUTO_CLEAR_DMG = 30;
-const WRONG_TAP_DMG = 10;
-const EMPTY_TAP_DMG = 10;
+const WRONG_TAP_DMG = 5;
+const EMPTY_TAP_DMG = 5;
 const POWDER_SELF_DMG = 12;
 const BASIC_FIRST_CD = 4;   // basics come online shortly after the start
 const ULT_MAX = 100;
 
 /* Waves ported from the Unity GameManager.CreateWaves():
    n buttons, seconds to form, seconds to clear, damage per pop. */
+/* Every correct pop is a 10-damage cannon shot; waves ramp size/speed only. */
 const WAVES = [
-  {n:2,form:1.0,clear:5,dmg:5}, {n:2,form:0.8,clear:5,dmg:5},
-  {n:3,form:1.0,clear:5,dmg:5}, {n:3,form:0.8,clear:5,dmg:5}, {n:3,form:1.2,clear:5,dmg:5},
-  {n:4,form:0.8,clear:5,dmg:7}, {n:4,form:1.2,clear:5,dmg:7}, {n:4,form:1.0,clear:5,dmg:7},
-  {n:4,form:0.8,clear:5,dmg:7}, {n:4,form:1.0,clear:5,dmg:7}, {n:4,form:1.2,clear:5,dmg:7},
+  {n:2,form:1.0,clear:5,dmg:10}, {n:2,form:0.8,clear:5,dmg:10},
+  {n:3,form:1.0,clear:5,dmg:10}, {n:3,form:0.8,clear:5,dmg:10}, {n:3,form:1.2,clear:5,dmg:10},
+  {n:4,form:0.8,clear:5,dmg:10}, {n:4,form:1.2,clear:5,dmg:10}, {n:4,form:1.0,clear:5,dmg:10},
+  {n:4,form:0.8,clear:5,dmg:10}, {n:4,form:1.0,clear:5,dmg:10}, {n:4,form:1.2,clear:5,dmg:10},
   {n:5,form:1.2,clear:5,dmg:10},{n:5,form:1.2,clear:5,dmg:10},{n:5,form:1.0,clear:5,dmg:10},
   {n:5,form:1.0,clear:5,dmg:10},{n:5,form:0.8,clear:5,dmg:10},{n:5,form:1.2,clear:5,dmg:10},
   {n:5,form:0.8,clear:5,dmg:10},{n:5,form:1.0,clear:5,dmg:10},{n:5,form:0.8,clear:5,dmg:10},
@@ -181,7 +199,7 @@ const WAVES = [
 function waveFor(i){
   if (i < WAVES.length) return WAVES[i];
   const k = i - WAVES.length; // endless overtime: tighter and meaner
-  return { n:6, form:0.7, clear:Math.max(3.2, 4.6 - k*0.15), dmg:12 };
+  return { n:6, form:0.7, clear:Math.max(3.2, 4.6 - k*0.15), dmg:10 };
 }
 
 /* Character kits: each pirate has a cooldown basic and an ultimate
@@ -190,21 +208,27 @@ const CHARACTERS = [
   { id:'redbeard', name:'Redbeard', title:'the Cannoneer', avatar:0, accentIcon:'💣',
     theme:{ glow:'#ff7a30', particle:'ember', deck:null },   // the default ship
     basic:{ icon:'💣', img:'icons/balls.png', name:'Pot Shot', cd:8,
-            desc:'Lob a cannonball at the enemy deck (6 damage).' },
+            desc:'Lob a cannonball at the enemy deck (15 damage).',
+            flavor:'A quick cannonball lobbed across the water to rattle their deck.' },
     ult:  { icon:'💥', img:'icons/cannon.png', name:'Broadside',
-            desc:'Rake the enemy deck with five cannonballs (8 damage each).' } },
+            desc:'Rake the enemy deck with five cannonballs (10 damage each).',
+            flavor:'Every gun on the ship roars at once in a thunderous barrage.' } },
   { id:'frostjaw', name:'White Death', title:'the Iceberg', avatar:2, accentIcon:'❄️',
     theme:{ glow:'#a8dcff', particle:'flake', deck:'snow' }, // frost-bitten deck
-    basic:{ icon:'❄️', name:'Cold Snap', cd:8,
-            desc:'Flash-freeze the enemy board for 0.8s.' },
-    ult:  { icon:'🧊', name:'Deep Freeze',
-            desc:'Freeze the enemy board solid for 2.6s — their wave timer keeps burning.' } },
+    basic:{ icon:'❄️', img:'icons/abilities/white_death-basic.png', name:'Cold Snap', cd:8,
+            desc:'Flash-freeze the enemy board for 0.8s.',
+            flavor:'A biting gust of frost that stiffens their fingers for a beat.' },
+    ult:  { icon:'🧊', img:'icons/abilities/white_death-ulti.png', name:'Deep Freeze',
+            desc:'Freeze the enemy board solid for 2.6s — their wave timer keeps burning.',
+            flavor:'Locks their whole deck in ice while the clock keeps ticking.' } },
   { id:'inkeye', name:'Inkeye', title:'the Cursed', avatar:1, accentIcon:'🦑',
     theme:{ glow:'#9a6ec9', particle:'wisp', deck:'dark' },  // worn, cursed wood
-    basic:{ icon:'🦑', name:'Ink Spit', cd:8,
-            desc:'Splat one ink blob over the enemy board for 2.5s.' },
-    ult:  { icon:'👻', name:'Kraken’s Curse',
-            desc:'4 seconds of chaos: faces wiped, buttons juggled, ink everywhere.' } },
+    basic:{ icon:'🦑', img:'icons/abilities/inkey-basic.png', name:'Ink Spit', cd:8,
+            desc:'Splat one ink blob over the enemy board for 2.5s.',
+            flavor:'Spits a gob of cursed ink to blot out part of their board.' },
+    ult:  { icon:'👻', img:'icons/abilities/inkeye-ulti.png', name:'Kraken’s Curse',
+            desc:'4 seconds of chaos: faces wiped, buttons juggled, ink everywhere.',
+            flavor:'Calls up the kraken — a storm of ink, chaos and vanished faces.' } },
 ];
 
 const PLAYER_ACCENT = ['#39b795','#e0483f'];
@@ -280,16 +304,14 @@ const SFX_FILES = {
   pop:  ['pop1.mp3','pop2.mp3'],
   wrong:['wrong.mp3'],
   boom: ['boom1.mp3','boom2.mp3','boom3.mp3','boom4.mp3'],
+  explode: ['explosion-sfx.mp3','explosion-sfx2.mp3','explosion-sfx3.mp3','explosion-sfx4.mp3'],
   click:['click1.mp3'],
   cast: ['click2.mp3'],
 };
-/* Voice sets: a character's `voice` field selects one. Add a new voice by
-   adding an id here and dropping assets/<id>-<mood><take>.mp3 files. */
-const VOICES = ['p1','p2'];
-const VOICE_MOODS = ['angry','peek','shock','smile'];
-for (const p of VOICES)
-  for (const e of VOICE_MOODS)
-    SFX_FILES[`${p}-${e}`] = [`${p}-${e}1.mp3`, `${p}-${e}2.mp3`];
+/* The old placeholder pirate grunts (p1-/p2- mood clips) are retired: each
+   character now brings its own voice set under assets/voices/<id>/, so those
+   stock recordings are no longer registered or played (only music + the new
+   character sounds remain, alongside the functional game SFX above). */
 
 const sfxCache = {};
 function play(name, vol=1, rate=1){
@@ -350,17 +372,24 @@ function probeCharSounds(){
 /* Play a character sound slot; returns false if no file exists so the
    caller can fall back to the stock sound. Multi-take slots (hurt)
    pick randomly among the takes that loaded. */
-function playCharSound(av, slot, vol=1){
+function playCharSound(av, slot, vol=1, onEnd=null){
+  let called = false;
+  const done = ()=>{ if (onEnd && !called){ called = true; onEnd(); } };
   const files = CHAR_SOUND_SLOTS[slot];
-  if (!files) return false;
+  if (!files){ done(); return null; }
   const avail = files
     .map(f => charSfx['voices/' + av.id + '/' + f])
     .filter(e => e && e.ok && e.el);
-  if (!avail.length) return false;
+  if (!avail.length){ done(); return null; }
   const el = avail[Math.floor(Math.random()*avail.length)].el.cloneNode();
   el.volume = clamp(vol, 0, 1);
-  el.play().catch(()=>{});
-  return true;
+  if (onEnd){
+    el.addEventListener('ended', done, { once:true });
+    el.addEventListener('error', done, { once:true });
+    setTimeout(done, 8000);   // safety net so a stuck clip never stalls the flow
+  }
+  el.play().catch(()=>{ done(); });
+  return el;
 }
 
 /* Music: the two repo tracks alternating forever, exactly like the
@@ -372,7 +401,7 @@ const Music = {
     if (this.started) return;
     this.started = true;
     this.el = new Audio(assetUrl(this.tracks[0]));
-    this.el.volume = 0.5;
+    this.el.volume = 0.35;   // ~70% of the old 0.5
     this.el.addEventListener('ended', ()=>{
       this.i = 1 - this.i;
       this.el.src = assetUrl(this.tracks[this.i]);
@@ -619,6 +648,21 @@ function drawAbilityIcon(g, ab, x, y, r){
   }
 }
 
+/* Greedy word-wrap for canvas text: returns the lines that fit in maxW
+   with the font currently set on g. */
+function wrapText(g, text, maxW){
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words){
+    const t = cur ? cur + ' ' + w : w;
+    if (cur && g.measureText(t).width > maxW){ lines.push(cur); cur = w; }
+    else cur = t;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
 function shuffled(arr){
   const a = arr.slice();
   for (let i=a.length-1; i>0; i--){
@@ -808,6 +852,8 @@ class Board {
     this.blinkUntil = 0;
     this.nextBlink = 0;
     this.charIdx = null;      // set during the select phase
+    this.ready = false;       // locked in via the Ready button
+    this.selectSoundDone = false;   // select voice line has finished playing
     this.character = null;
     this.theme = null;        // character deck theme (glow + ambient particles)
     this.hpShown = MAX_HP;    // trails hp for the red "ghost" bar segment
@@ -926,11 +972,10 @@ class Board {
       this.spawnThemeParticle(now);
       this.nextThemeAt = now + rand(0.18, 0.5);
     }
-    if (now >= this.nextGruntAt){ // idle pirate chatter, like PlayerFaceGestures
+    if (now >= this.nextGruntAt){ // idle pirate emotes, like PlayerFaceGestures
       const moods = ['angry','peek','shock','smile'];
       const m = moods[Math.floor(Math.random()*moods.length)];
-      play(this.voice + '-' + m, 0.75);
-      this.setMood(m, 1.6, now);    // face matches the grunt
+      this.setMood(m, 1.6, now);    // silent now: the face still reacts, no stock grunt
       this.nextGruntAt = now + rand(5, 15);
     }
   }
@@ -943,6 +988,23 @@ class Board {
       this.blinkUntil = now + 0.12;
       this.nextBlink = now + rand(2, 6);
     }
+    for (const p of this.particles){  // shot lifecycle: muzzle crack, then the strike
+      if (p.type !== 'shot') continue;
+      if (p.heavy && !p.fired && now >= p.t0){
+        p.fired = true;
+        play('boom', 0.35, 1.35);                      // muzzle crack at the gun
+        this.burst(p.x, p.y, '#ffd08a', now, 8);
+      }
+      if (!p.landed && now - p.t0 >= p.life){
+        p.landed = true;
+        this.shotImpact(p.tx, p.ty, p.dmg, now, p.heavy);
+        if (p.heavy){                                  // ability shots land their damage here
+          play('boom', 0.9);
+          this.game.applyDamage(1 - this.idx, p.dmg, null, null, this.idx);
+          this.game.boards[1 - this.idx].shakeUntil = now + 0.3;
+        }
+      }
+    }
     this.inkBlobs = this.inkBlobs.filter(k => now < k.until);
     this.particles = this.particles.filter(p => now - p.t0 < p.life);
     this.floats = this.floats.filter(f => now - f.t0 < 1.1);
@@ -950,7 +1012,6 @@ class Board {
   }
   failWave(now){
     play('wrong', 0.9);
-    play(this.voice + '-angry', 0.95);
     this.setMood('angry', 2, now);
     this.game.applyDamage(this.idx, AUTO_CLEAR_DMG, this.W/2, this.H*0.4);
     for (const b of this.buttons) b.failed = true;
@@ -1011,6 +1072,10 @@ class Board {
       this.game.trySelect(this.idx, lx, ly, now);
       return;
     }
+    if (this.game.phase === 'countdown'){       // VS screen: race to call the first battle cry
+      this.game.registerVsTap(this.idx, now);
+      return;
+    }
     // ability buttons are usable even while frozen (counterplay!)
     const ab = this.abilityAt(lx, ly);
     if (ab){
@@ -1054,8 +1119,11 @@ class Board {
   popButton(b, now){
     this.buttons.splice(this.buttons.indexOf(b), 1);
     this.nextOrd++;
-    play('pop', 1, 0.95 + b.ord*0.05);
-    this.burst(b.x, b.y, b.kind.bg, now);
+    // every correct pop IS a cannon shot: the button detonates and a ball
+    // streaks off toward the enemy ship across the divider
+    play('explode', 0.55, 0.92 + Math.random()*0.2);
+    this.buttonBlast(b.x, b.y, b.r, b.kind.bg, now);
+    this.fireShot(b.x, b.y, this.wave.dmg, now);
     this.game.applyDamage(1 - this.idx, this.wave.dmg, null, null, this.idx);
     if (b.powder){
       play('boom', 0.9);
@@ -1070,14 +1138,12 @@ class Board {
     this.frozenUntil = now + secs;
     this.setAnnounce('❄ FROZEN ❄', '#a8dcff', now, secs);
     Snd.freeze();
-    play(this.voice + '-shock', 0.95);
     this.setMood('shock', secs, now);
   }
   applyGhost(now, secs){
     this.ghostUntil = now + secs;
     this.setAnnounce('👻 CURSED', '#cfd8ff', now, 1.0);
     Snd.ghost();
-    play(this.voice + '-peek', 0.9);
     this.setMood('peek', 1.5, now);
   }
   applyInk(now, count, secs){
@@ -1087,7 +1153,6 @@ class Board {
         r:this.R*rand(1.9,2.6), until:now+secs, t0:now, ph:rand(0,TAU) });
     }
     Snd.ink();
-    play(this.voice + '-shock', 0.9);
     this.setMood('shock', 1.5, now);
   }
   applyJuggle(now){
@@ -1106,7 +1171,6 @@ class Board {
     }
     this.setAnnounce('🐵 JUGGLED!', '#e0a23c', now, 1.0);
     Snd.juggle();
-    play(this.voice + '-angry', 0.85);
     this.setMood('angry', 1.5, now);
   }
   applyPowder(now){ // not in any MVP kit; kept for future characters
@@ -1126,10 +1190,46 @@ class Board {
     this.burst(x, y, '#ff9c3f', now, 26);
     this.smoke(x, y, now);
   }
-  cannonImpact(x, y, now){
-    play('boom', 1);
-    this.explosion(x, y, this.R*1.6, now);
-    this.shakeUntil = now + 0.45;
+  /* a popped button detonating: comic fireball + the button's own splinters */
+  buttonBlast(x, y, r, color, now){
+    this.particles.push({ type:'boom', x, y, size:r*1.05, t0:now, life:0.34 });
+    this.particles.push({ type:'ring', x, y, t0:now, life:0.4, size:r*1.35, color:'#ffca6a' });
+    this.burst(x, y, color, now, 10);            // splinters keep the mark's color
+    this.burst(x, y, '#ff9c3f', now, 8);         // embers
+    this.smoke(x, y, now);
+  }
+  /* the cannonball leaving the deck toward the enemy ship (local y=0 is the
+     divider; past it lies the water and the enemy hull). Tap shots are pure
+     telegraph (damage lands instantly); heavy ability shots carry their
+     damage with them and deal it on impact. startAt in the future lets a
+     broadside rake the hull ball by ball. */
+  fireShot(x, y, dmg, now, heavy=false, startAt=null){
+    const drift = (this.W/2 - x)*0.35;           // balls converge on the enemy hull
+    this.particles.push({ type:'shot', late:true, heavy, x, y,
+      t0: startAt == null ? now : startAt,
+      life: heavy ? 0.19 : 0.22,                 // ability shots hit harder AND faster
+      dmg,
+      tx: heavy ? rand(this.W*0.14, this.W*0.86)
+                : clamp(x + drift + rand(-24, 24), 16, this.W - 16),
+      ty: -this.game.divH*0.8,                   // the far hull, just shy of their HP bar
+      size: heavy ? clamp(this.R*0.45, 10, 17) : clamp(this.R*0.24, 5, 9),
+      fired:false, landed:false });
+  }
+  /* the strike on the enemy hull: splinters, flash, and the damage number */
+  shotImpact(x, y, dmg, now, heavy=false){
+    const n = heavy ? 20 : 10;
+    for (let i=0;i<n;i++){
+      const a = rand(0,TAU), sp = heavy ? rand(90,340) : rand(60,240);
+      this.particles.push({ type:'spark', late:true, x, y,
+        vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+        t0:now, life:rand(0.3, heavy ? 0.7 : 0.55), size:heavy ? rand(3,6.5) : rand(2,4.5),
+        color: i%2 ? '#c9a35e' : '#ff9c3f' });   // hull splinters + embers
+    }
+    this.particles.push({ type:'ring', late:true, x, y, t0:now, life:heavy ? 0.45 : 0.35,
+      size:this.R*(heavy ? 1.7 : 0.9), color:'#ffca6a' });
+    this.particles.push({ type:'boom', late:true, x, y, size:this.R*(heavy ? 1.2 : 0.55),
+      t0:now, life:heavy ? 0.36 : 0.26 });
+    this.floats.push({ txt:'-'+dmg, color:'#ff5a4d', x, y, t0:now, late:true, big:heavy });
   }
   /* --- particles --- */
   burst(x, y, color, now, n=14){
@@ -1221,7 +1321,6 @@ class Game {
     this.boards = [new Board(0,this), new Board(1,this)];
     this.phase = 'idle';     // idle | select | countdown | match
     this.running = false;
-    this.pendingHits = [];   // scheduled cannonballs
     this.intrusions = [];    // in-flight ult boarding taunts
     this.lastT = performance.now()/1000;
     this.resize();
@@ -1245,7 +1344,6 @@ class Game {
     const now = performance.now()/1000;
     this.phase = 'select';
     this.running = false;
-    this.pendingHits = [];
     this.intrusions = [];
     for (const b of this.boards){
       b.reset();
@@ -1253,16 +1351,58 @@ class Game {
       b.nextBlink = now + rand(1, 3);
     }
   }
+  /* someone said "no moar": back to the splash screen */
+  backToTitle(){
+    this.phase = 'idle';
+    this.running = false;
+    this.intrusions = [];
+  }
+  /* both said Rematch: same pirates square up again from the VS splash */
+  rematch(now){
+    this.intrusions = [];
+    for (const b of this.boards){
+      const ci = b.charIdx;
+      b.reset();
+      b.charIdx = ci;
+      b.character = CHARACTERS[ci];
+      b.avatar = AVATARS[CHARACTERS[ci].avatar];
+      b.voice = b.avatar.voice;
+      b.theme = CHARACTERS[ci].theme;
+      b.planks = makePlanks(b.W, b.H, b.theme.glow, b.theme.deck);
+      b.nextBlink = now + rand(1, 3);
+    }
+    this.phase = 'countdown';
+    this.vsStartAt = now;
+    this.vsTaps = [0, 0];
+    this.firstSpeaker = -1;
+    this.vsDeadline = now + 3.0;
+    this.startSeqBegun = false;
+    play('cast', 0.9);
+  }
   /* three character cards per board, tapped on each player's own side */
   cardRect(b, i){
     const gap = Math.min(b.W*0.035, 16);
     const w = Math.min((b.W - gap*2 - 28)/3, 170);
-    const h = Math.min(b.H*0.56, w*1.5);
+    const h = Math.min(b.H*0.40, w*1.35);
     const total = w*3 + gap*2;
-    return { x: b.W/2 - total/2 + i*(w+gap), y: b.H*0.26, w, h };
+    return { x: b.W/2 - total/2 + i*(w+gap), y: b.H*0.16, w, h };
+  }
+  /* the Ready button that locks in a pick and moves toward the VS screen */
+  readyRect(b){
+    const w = Math.min(b.W*0.52, 230), h = Math.min(b.H*0.085, 44);
+    return { x: b.W/2 - w/2, y: b.H*0.90 - h/2, w, h };
   }
   trySelect(boardIdx, lx, ly, now){
     const b = this.boards[boardIdx];
+    // Ready button first (only once a pirate is chosen and not yet locked in)
+    if (b.charIdx != null && !b.ready){
+      const rr = this.readyRect(b);
+      if (lx >= rr.x && lx <= rr.x+rr.w && ly >= rr.y && ly <= rr.y+rr.h){
+        this.setReady(boardIdx, now);
+        return;
+      }
+    }
+    if (b.ready) return;                    // locked in: ignore further taps
     for (let i=0;i<CHARACTERS.length;i++){
       const r = this.cardRect(b, i);
       if (lx >= r.x && lx <= r.x+r.w && ly >= r.y && ly <= r.y+r.h){
@@ -1271,26 +1411,82 @@ class Game {
       }
     }
   }
+  /* Pick or switch a pirate (freely, until Ready is pressed). Shows the
+     character's ability flavor; does not advance the screen on its own. */
   selectChar(boardIdx, ci, now){
     if (this.phase !== 'select') return;
     const b = this.boards[boardIdx];
+    if (b.ready) return;                    // can't change once ready
     b.charIdx = ci;
     b.character = CHARACTERS[ci];
     b.avatar = AVATARS[CHARACTERS[ci].avatar];
     b.voice = b.avatar.voice;
     b.theme = CHARACTERS[ci].theme;
     b.planks = makePlanks(b.W, b.H, b.theme.glow, b.theme.deck);  // the character claims the ship
-    b.setMood('smile', 1.4, now);
-    play('click', 0.7);
-    if (!playCharSound(b.avatar, 'select', 0.95)) play(b.voice + '-smile', 0.9);
-    if (this.boards.every(x => x.charIdx != null)){
-      this.phase = 'countdown';
-      this.vsStartAt = now;
-      this.matchStartAt = now + 2.6;     // pre-fight splash: X vs. Y
-      play('cast', 0.9);
-      play(this.boards[0].voice + '-smile', 0.9);
-      play(this.boards[1].voice + '-angry', 0.85);
+    b.setMood('smile', 1.2, now);
+    play('click', 0.55);
+    // the pirate calls out on every tap; cut off the prior preview so quick
+    // browsing doesn't pile voices up. This same cry also gates the VS screen.
+    if (b._selPreview){ try { b._selPreview.pause(); } catch(e){} }
+    const token = (b.selToken = (b.selToken || 0) + 1);
+    b.selectSoundDone = false;
+    b._selPreview = playCharSound(b.avatar, 'select', 0.95, ()=>{
+      if (b.selToken !== token) return;     // a newer pick has superseded this one
+      b.selectSoundDone = true;
+      this.maybeStartCountdown(performance.now()/1000);
+    });
+  }
+  /* Lock the pick in. Once BOTH players are ready and both select cries have
+     played out, the VS splash begins. */
+  setReady(boardIdx, now){
+    const b = this.boards[boardIdx];
+    if (this.phase !== 'select' || b.charIdx == null || b.ready) return;
+    b.ready = true;
+    play('cast', 0.85);
+    b.setMood('smile', 1.6, now);
+    this.maybeStartCountdown(now);
+  }
+  /* Advance to the VS splash only once BOTH players have readied up AND both
+     select voice lines have played out (so the cries never overlap). */
+  maybeStartCountdown(now){
+    if (this.phase !== 'select') return;
+    if (!this.boards.every(x => x.ready && x.selectSoundDone)) return;
+    this.phase = 'countdown';
+    this.vsStartAt = now;
+    this.vsTaps = [0, 0];
+    this.firstSpeaker = -1;                 // set to the first board to reach 5 taps
+    this.vsDeadline = now + 3.0;            // race window before the cries start anyway
+    this.startSeqBegun = false;
+    play('cast', 0.9);
+  }
+  /* VS-screen tap race: the first player to tap their own half 5 times wins
+     the right to bark first. If nobody reaches 5 before the deadline, Player 1
+     leads. Locking the winner also kicks off the battle-cry sequence. */
+  registerVsTap(idx, now){
+    if (this.phase !== 'countdown' || this.startSeqBegun) return;
+    this.vsTaps[idx]++;
+    play('click', 0.6);
+    this.boards[idx].setMood('angry', 0.6, now);
+    if (this.vsTaps[idx] >= 5 && this.firstSpeaker < 0){
+      this.firstSpeaker = idx;
+      this.beginStartSequence(now);
     }
+  }
+  /* Both crews bark their start line in turn; the match only begins once the
+     second line has finished. */
+  beginStartSequence(now){
+    if (this.startSeqBegun) return;
+    this.startSeqBegun = true;
+    const first = this.firstSpeaker >= 0 ? this.firstSpeaker : 0;
+    const second = 1 - first;
+    this.boards[first].setMood('smile', 2.4, now);
+    playCharSound(this.boards[first].avatar, 'start', 0.9, ()=>{
+      const t = performance.now()/1000;
+      this.boards[second].setMood('smile', 2.4, t);
+      playCharSound(this.boards[second].avatar, 'start', 0.9, ()=>{
+        this.beginMatch(performance.now()/1000);
+      });
+    });
   }
   beginMatch(now){
     this.phase = 'match';
@@ -1300,7 +1496,6 @@ class Game {
       b.basicCdUntil = now + BASIC_FIRST_CD;
       b.ultCharge = 0;
       b.begin(now);
-      playCharSound(b.avatar, 'start', 0.9);   // battle cry, if the character has one
     }
   }
   /* screen → board-local. Board 1 (top) is rotated 180° so its player
@@ -1328,7 +1523,7 @@ class Game {
       me.setMood('smile', 0.8, now);
       me.addFloat(ch.basic.icon + ' ' + ch.basic.name + '!', '#e8c469', me.W/2, me.hudH + 30, now);
       switch (ch.id){
-        case 'redbeard': this.scheduleCannons(1 - playerIdx, 1, 6, now); break;
+        case 'redbeard': me.fireShot(me.basicX, me.puY, 15, now, true); break;
         case 'frostjaw': enemy.applyIce(now, 0.8); break;
         case 'inkeye':   enemy.applyInk(now, 1, 2.5); break;
       }
@@ -1352,16 +1547,6 @@ class Game {
         tIn: T_IN, hover: HOVER, tOut: T_OUT, taunted: false, fired: false });
     }
   }
-  scheduleCannons(boardIdx, n, dmg, now){
-    const a = this.boards[boardIdx].playArea();
-    const FLIGHT = 0.35;   // each ball is visible in the air this long
-    for (let i=0;i<n;i++){
-      const x = rand(a.x0, a.x1), y = rand(a.y0, a.y1);
-      this.pendingHits.push({ fireT: now + i*0.38, t: now + FLIGHT + i*0.38,
-        flight: FLIGHT, board: boardIdx, dmg, x, y,
-        fx: clamp(x + rand(-70, 70), 20, this.W - 20), fired: false });
-    }
-  }
   /* the single choke-point every hit goes through — this is the
      future network boundary */
   applyDamage(boardIdx, amt, x, y, fromIdx = null){
@@ -1372,9 +1557,12 @@ class Game {
     b.hpFlashUntil = tNow + 0.4;
     if (tNow >= b.hurtSoundCdUntil && playCharSound(b.avatar, 'hurt', 0.85))
       b.hurtSoundCdUntil = tNow + 1.2;
-    const fx = x==null ? b.W - 60 : x;
-    const fy = y==null ? b.hudH + 26 : y;
-    b.addFloat('-' + amt, '#ff5a4d', fx, fy, performance.now()/1000);
+    // tap shots show their number at the hull impact instead (shooter side)
+    if (!(x == null && fromIdx != null)){
+      const fx = x==null ? b.W - 60 : x;
+      const fy = y==null ? b.hudH + 26 : y;
+      b.addFloat('-' + amt, '#ff5a4d', fx, fy, tNow);
+    }
     if (b.hp <= 0) this.endGame(1 - boardIdx);
   }
   endGame(winnerIdx){
@@ -1387,21 +1575,12 @@ class Game {
     const winB = this.boards[winnerIdx], loseB = this.boards[1-winnerIdx];
     winB.setMood('smile', 9999, now);
     loseB.setMood('angry', 9999, now);
-    if (!playCharSound(winB.avatar, 'victory', 1)) play(winB.voice + '-smile', 1);
+    // the loser groans first, then the victor crows over them, then the fanfare
+    playCharSound(loseB.avatar, 'defeat', 0.95, ()=>{
+      playCharSound(winB.avatar, 'victory', 1, ()=>{ Snd.fanfare(); });
+    });
     setTimeout(()=>{
-      if (!playCharSound(loseB.avatar, 'defeat', 0.95)) play(loseB.voice + '-angry', 0.95);
-    }, 500);
-    setTimeout(()=>{ Snd.fanfare(); }, 1500);
-    const taunts = [
-      'The loser walks the plank. Slowly. For dramatic effect.',
-      'Faster fingers, fuller treasure chest.',
-      'The sea remembers the slow ones.',
-      'All that gunpowder, and still not quick enough.',
-      'Send word to port: a new tapping legend sails tonight.',
-    ];
-    setTimeout(()=>{
-      document.getElementById('winTaunt').textContent =
-        '“' + taunts[Math.floor(Math.random()*taunts.length)] + '”';
+      resetRematchUI();
       document.getElementById('winOverlay').hidden = false;
     }, 3000);
   }
@@ -1410,7 +1589,8 @@ class Game {
     const dt = Math.min(0.05, now - this.lastT);
     this.lastT = now;
     for (const b of this.boards) b.tickFx(now);
-    if (this.phase === 'countdown' && now >= this.matchStartAt) this.beginMatch(now);
+    if (this.phase === 'countdown' && !this.startSeqBegun && now >= this.vsDeadline)
+      this.beginStartSequence(now);   // nobody claimed the first cry in time → P1 leads
     if (this.running){
       for (const b of this.boards) b.update(now, dt);
       for (let i=this.intrusions.length-1; i>=0; i--){
@@ -1419,12 +1599,15 @@ class Game {
         const k = now - it.t0;
         if (!it.taunted && k >= it.tIn){
           it.taunted = true;                          // the taunt, in their face
-          if (!playCharSound(caster.avatar, 'taunt', 1)) play(caster.voice + '-smile', 1);
+          playCharSound(caster.avatar, 'taunt', 1);
         }
         if (!it.fired && k >= it.tIn + it.hover + it.tOut){
           it.fired = true;
           switch (caster.character.id){
-            case 'redbeard': this.scheduleCannons(it.target, 5, 8, now); break;
+            case 'redbeard':                    // broadside: five guns, one by one
+              for (let bi=0; bi<5; bi++)
+                caster.fireShot(caster.ultX, caster.puY, 10, now, true, now + bi*0.28);
+              break;
             case 'frostjaw': victim.applyIce(now, 2.6); break;
             case 'inkeye':
               victim.applyGhost(now, 4);
@@ -1433,19 +1616,6 @@ class Game {
               break;
           }
           this.intrusions.splice(i, 1);
-        }
-      }
-      for (let i=this.pendingHits.length-1; i>=0; i--){
-        const h = this.pendingHits[i];
-        if (!h.fired && now >= h.fireT){       // muzzle crack at the enemy hull
-          h.fired = true;
-          play('boom', 0.3, 1.5);
-          this.boards[h.board].burst(h.fx, 8, '#ffd08a', now, 8);
-        }
-        if (now >= h.t){
-          this.boards[h.board].cannonImpact(h.x, h.y, now);
-          this.applyDamage(h.board, h.dmg, h.x, h.y);
-          this.pendingHits.splice(i,1);
         }
       }
     }
@@ -1468,6 +1638,16 @@ class Game {
     this.renderBoard(g, this.boards[1], now);
     g.restore();
     this.renderDivider(g, now);
+    // cannonballs cross the water above everything, striking the far hull
+    g.save();
+    g.translate(0, this.divBot);
+    this.renderLateFx(g, this.boards[0], now);
+    g.restore();
+    g.save();
+    g.translate(this.W, this.divTop);
+    g.rotate(Math.PI);
+    this.renderLateFx(g, this.boards[1], now);
+    g.restore();
   }
   /* The gap between the boards is open sea: two ships side by side,
      hulls at the water's edge, cannons run out and aimed at each other. */
@@ -1585,22 +1765,8 @@ class Game {
     for (const p of b.particles) if (p.bg) this.renderParticle(g, p, now);
     // buttons
     for (const bt of b.buttons) this.renderButton(g, b, bt, now);
-    // effect particles
-    for (const p of b.particles) if (!p.bg) this.renderParticle(g, p, now);
-    // incoming cannonballs arcing over from the enemy ship (divider side)
-    for (const h of this.pendingHits){
-      if (h.board !== b.idx || !h.fired || now >= h.t) continue;
-      const pr = clamp((now - h.fireT)/h.flight, 0, 1);
-      const cx = h.fx + (h.x - h.fx)*pr;
-      const cy = 2 + (h.y - 2)*pr;
-      const size = 5 + Math.sin(pr*Math.PI)*5;   // swells mid-arc
-      g.fillStyle = 'rgba(0,0,0,0.25)';
-      g.beginPath(); g.ellipse(cx+3, cy+6, size*0.9, size*0.5, 0, 0, TAU); g.fill();
-      g.fillStyle = '#15181c';
-      g.beginPath(); g.arc(cx, cy, size, 0, TAU); g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.25)';
-      g.beginPath(); g.arc(cx-size*0.3, cy-size*0.3, size*0.3, 0, TAU); g.fill();
-    }
+    // effect particles (shots + hull impacts render later, above the divider)
+    for (const p of b.particles) if (!p.bg && !p.late) this.renderParticle(g, p, now);
     // kraken ink sits on top of everything in play
     for (const k of b.inkBlobs){
       const age = now - k.t0, left = k.until - now;
@@ -1675,8 +1841,9 @@ class Game {
         g.beginPath(); g.arc(f.x, f.y, 10+t*26, 0, TAU); g.stroke();
       }
     }
-    // floats
+    // floats (impact numbers render later, above the divider)
     for (const f of b.floats){
+      if (f.late) continue;
       const t = (now - f.t0)/1.1;
       g.globalAlpha = 1 - t;
       g.font = `700 ${Math.round(b.R*0.62)}px -apple-system, "Segoe UI", sans-serif`;
@@ -1706,6 +1873,23 @@ class Game {
     this.renderIntrusion(g, b, now);
     this.renderHud(g, b, now);
     this.renderAbilities(g, b, now);
+  }
+  /* Shots and their hull impacts, drawn last in the board's own transform so
+     the balls sail over the HUD and the divider ships to the enemy hull. */
+  renderLateFx(g, b, now){
+    for (const p of b.particles) if (p.late) this.renderParticle(g, p, now);
+    for (const f of b.floats){
+      if (!f.late) continue;
+      const t = (now - f.t0)/1.1;
+      g.globalAlpha = 1 - t;
+      g.font = `700 ${Math.round(b.R*(f.big ? 0.95 : 0.62))}px -apple-system, "Segoe UI", sans-serif`;
+      g.textAlign='center'; g.textBaseline='middle';
+      g.strokeStyle = 'rgba(0,0,0,0.7)'; g.lineWidth = 4;
+      g.strokeText(f.txt, f.x, f.y - t*44);
+      g.fillStyle = f.color;
+      g.fillText(f.txt, f.x, f.y - t*44);
+      g.globalAlpha = 1;
+    }
   }
   /* The caster's portrait sails in over the victim's deck under a spotlight,
      gloats, and sails back — the whole board dims and locks beneath them. */
@@ -1781,7 +1965,7 @@ class Game {
   }
   renderParticle(g, p, now){
     const t = (now - p.t0)/p.life;
-    if (t >= 1) return;
+    if (t < 0 || t >= 1) return;   // t<0: a broadside ball still waiting its turn
     if (p.type === 'spark'){
       g.globalAlpha = 1-t;
       g.fillStyle = p.color;
@@ -1808,6 +1992,28 @@ class Game {
       g.fill();
     } else if (p.type === 'boom'){
       drawBoom(g, p.x, p.y, p.size, t);
+    } else if (p.type === 'shot'){
+      const e = Math.min(1, t);                       // full speed off the deck, no ease
+      const x = p.x + (p.tx - p.x)*e, y = p.y + (p.ty - p.y)*e;
+      for (let k = 3; k >= 1; k--){                   // smoke trail behind it
+        const eb = Math.max(0, e - k*0.09);
+        g.globalAlpha = (1 - t)*0.16;
+        g.fillStyle = '#c9cdd2';
+        g.beginPath();
+        g.arc(p.x + (p.tx - p.x)*eb, p.y + (p.ty - p.y)*eb, p.size*(0.55 + k*0.14), 0, TAU);
+        g.fill();
+      }
+      const s = p.size*(1 + Math.sin(e*Math.PI)*0.35);                // swells mid-flight
+      g.globalAlpha = 1;
+      g.fillStyle = '#15181c';
+      g.beginPath(); g.arc(x, y, s, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.3)';
+      g.beginPath(); g.arc(x - s*0.3, y - s*0.3, s*0.32, 0, TAU); g.fill();
+      g.strokeStyle = 'rgba(255,190,90,0.7)';                         // hot streak
+      g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(x, y);
+      const eb2 = Math.max(0, e - 0.18);
+      g.lineTo(p.x + (p.tx - p.x)*eb2, p.y + (p.ty - p.y)*eb2); g.stroke();
     } else if (p.type === 'ember'){
       g.globalAlpha = (1-t)*(0.5 + 0.4*Math.sin(now*20 + p.ph));
       g.fillStyle = p.color;
@@ -1908,7 +2114,8 @@ class Game {
         g.fillStyle = 'rgba(10,7,4,0.65)';
         g.beginPath();
         g.moveTo(x, y);
-        g.arc(x, y, r, -Math.PI/2, -Math.PI/2 + TAU*frac);
+        // deplete clockwise: the trailing edge sweeps back to the top clockwise
+        g.arc(x, y, r, -Math.PI/2, -Math.PI/2 - TAU*frac, true);
         g.closePath(); g.fill();
       }
       g.globalAlpha = 1;
@@ -1966,11 +2173,6 @@ class Game {
     g.strokeText(foe.character.name.toUpperCase(), fx, nameY);
     g.fillStyle = (foe.theme && foe.theme.glow) || foe.accent;
     g.fillText(foe.character.name.toUpperCase(), fx, nameY);
-    g.font = `italic ${Math.round(Math.min(W*0.035, 16))}px Georgia, serif`;
-    g.fillStyle = '#c9b98d';
-    const vsTitleY = nameY + Math.min(W*0.055, 26)*0.75 + Math.min(W*0.035, 16)*0.7 + 3;
-    g.fillText(b.character.title, mx, vsTitleY);
-    g.fillText(foe.character.title, fx, vsTitleY);
     const pulse = 1 + (REDUCED_MOTION ? 0 : Math.sin(now*6)*0.06);
     g.globalAlpha = ease;
     g.font = `900 ${Math.round(Math.min(W*0.16, H*0.18)*pulse)}px Georgia, serif`;
@@ -1981,7 +2183,15 @@ class Game {
     g.font = `600 ${Math.round(Math.min(W*0.04, 18))}px Georgia, serif`;
     g.fillStyle = '#e8c469';
     const dots = '.'.repeat(1 + Math.floor(now*2)%3);
-    g.fillText('READY THE CANNONS' + dots, W/2, H*0.78);
+    let vsMsg;
+    if (this.startSeqBegun){
+      vsMsg = 'HOIST THE COLOURS' + dots;
+    } else {
+      const mine = (this.vsTaps && this.vsTaps[b.idx]) || 0;
+      vsMsg = mine >= 5 ? 'YE CALLED IT!'
+                        : 'TAP YER DECK TO CALL IT!  ' + mine + '/5';
+    }
+    g.fillText(vsMsg, W/2, H*0.78);
     g.globalAlpha = 1;
   }
   /* Knockout ending, staged like the VS splash: both portraits square up,
@@ -2038,9 +2248,6 @@ class Game {
       g.strokeText(winB.character.name.toUpperCase() + ' WINS!', W/2, H*0.66);
       g.fillStyle = '#ffd44d';
       g.fillText(winB.character.name.toUpperCase() + ' WINS!', W/2, H*0.66);
-      g.font = `italic ${Math.round(Math.min(W*0.04, 18))}px Georgia, serif`;
-      g.fillStyle = (winB.theme && winB.theme.glow) || winB.accent;
-      g.fillText(winB.character.title, W/2, H*0.66 + size*0.75 + Math.min(W*0.04, 18)*0.7 + 4);
       g.globalAlpha = 1;
       if (!REDUCED_MOTION && Math.random() < 0.25){  // victory sparks
         b.particles.push({ type:'spark', x:rand(W*0.2,W*0.8), y:H*0.66,
@@ -2051,17 +2258,19 @@ class Game {
     }
   }
   renderSelect(g, b, now){
-    g.font = `700 ${Math.round(Math.min(b.W*0.055, 30))}px Georgia, serif`;
+    g.font = `700 ${Math.round(Math.min(b.W*0.05, 28))}px Georgia, serif`;
     g.textAlign = 'center'; g.textBaseline = 'middle';
     g.strokeStyle = 'rgba(0,0,0,0.7)'; g.lineWidth = 5;
-    g.strokeText('CHOOSE YER PIRATE', b.W/2, b.H*0.15);
+    g.strokeText('CHOOSE YER PIRATE', b.W/2, b.H*0.08);
     g.fillStyle = '#e8c469';
-    g.fillText('CHOOSE YER PIRATE', b.W/2, b.H*0.15);
+    g.fillText('CHOOSE YER PIRATE', b.W/2, b.H*0.08);
+    let cardsBottom = b.H*0.15;
     for (let i=0;i<CHARACTERS.length;i++){
       const c = CHARACTERS[i], rc = this.cardRect(b, i);
+      cardsBottom = rc.y + rc.h;
       const sel = b.charIdx === i;
       const dim = b.charIdx != null && !sel;
-      g.globalAlpha = dim ? 0.45 : 1;
+      g.globalAlpha = dim ? 0.4 : 1;
       g.fillStyle = 'rgba(20,12,6,0.78)';
       g.beginPath();
       g.roundRect ? g.roundRect(rc.x, rc.y, rc.w, rc.h, 10) : g.rect(rc.x, rc.y, rc.w, rc.h);
@@ -2071,60 +2280,74 @@ class Game {
       g.beginPath();
       g.roundRect ? g.roundRect(rc.x, rc.y, rc.w, rc.h, 10) : g.rect(rc.x, rc.y, rc.w, rc.h);
       g.stroke();
-      const pr = rc.w*0.26;
-      drawPirate(g, AVATARS[c.avatar], rc.x + rc.w/2, rc.y + rc.h*0.3, pr, now,
+      const pr = Math.min(rc.w*0.32, rc.h*0.32);
+      drawPirate(g, AVATARS[c.avatar], rc.x + rc.w/2, rc.y + rc.h*0.42, pr, now,
                  sel ? 'smile' : 'idle', now < b.blinkUntil);
       g.textAlign='center'; g.textBaseline='middle';
-      // stack name / title / icons by font size so they never collide
-      const nameFs = Math.round(Math.min(rc.w*0.115, rc.h*0.085));
-      const titleFs = Math.round(nameFs*0.72);
-      const nameY = rc.y + rc.h*0.56 + pr*0.2;
-      const titleY = nameY + nameFs*0.75 + titleFs*0.62;
-      const iconsY = titleY + titleFs*0.9 + rc.w*0.12;
+      // just the name now — abilities are shown in the summary below on tap
+      const nameFs = Math.round(Math.min(rc.w*0.135, rc.h*0.12));
       g.font = `700 ${nameFs}px Georgia, serif`;
       g.fillStyle = sel ? '#ffd44d' : '#e8c469';
-      g.fillText(c.name.toUpperCase(), rc.x + rc.w/2, nameY);
-      g.font = `italic ${titleFs}px Georgia, serif`;
-      g.fillStyle = '#c9b98d';
-      g.fillText(c.title, rc.x + rc.w/2, titleY);
-      drawAbilityIcon(g, c.basic, rc.x + rc.w/2 - rc.w*0.14, iconsY, rc.w*0.1);
-      drawAbilityIcon(g, c.ult, rc.x + rc.w/2 + rc.w*0.14, iconsY, rc.w*0.1);
+      g.fillText(c.name.toUpperCase(), rc.x + rc.w/2, rc.y + rc.h*0.78);
       g.globalAlpha = 1;
     }
-    g.font = `600 ${Math.round(Math.min(b.W*0.035, 17))}px Georgia, serif`;
-    g.fillStyle = '#c9b98d';
-    const msg = this.phase === 'countdown' ? 'READY! HOIST THE COLOURS…'
-      : b.charIdx == null ? 'tap a card · left icon = quick trick · right icon = ultimate'
-      : 'waiting for the enemy…';
-    g.fillText(msg, b.W/2, b.H*0.26 + this.cardRect(b,0).h + Math.min(b.H*0.07, 34));
+    const rr = this.readyRect(b);
+    // ability flavor summary for the chosen pirate
+    if (b.charIdx != null){
+      const c = CHARACTERS[b.charIdx];
+      const panelW = Math.min(b.W*0.88, 470);
+      const px = b.W/2 - panelW/2;
+      const labelFs = Math.round(Math.min(b.W*0.033, 14));
+      const bodyFs  = Math.round(Math.min(b.W*0.03, 13));
+      const lineH = bodyFs*1.2;
+      g.textAlign = 'left'; g.textBaseline = 'top';
+      let fy = cardsBottom + Math.min(b.H*0.03, 14);
+      for (const [tag, ab, col] of [['BASIC', c.basic, '#e8c469'], ['ULTIMATE', c.ult, '#ffd44d']]){
+        const ir = labelFs*0.72, tx = px + ir*2 + 8;
+        drawAbilityIcon(g, ab, px + ir, fy + labelFs*0.5, ir);
+        g.font = `700 ${labelFs}px Georgia, serif`;
+        g.fillStyle = col;
+        g.fillText(tag + ' · ' + ab.name, tx, fy);
+        fy += labelFs*1.12;
+        g.font = `${bodyFs}px -apple-system, "Segoe UI", sans-serif`;
+        g.fillStyle = '#c9b98d';
+        for (const ln of wrapText(g, ab.flavor, panelW - (ir*2 + 8))){
+          g.fillText(ln, tx, fy); fy += lineH;
+        }
+        fy += bodyFs*0.5;
+      }
+    }
+    // Ready button / status
+    g.textAlign='center'; g.textBaseline='middle';
+    if (b.charIdx == null){
+      g.font = `600 ${Math.round(Math.min(b.W*0.036, 16))}px Georgia, serif`;
+      g.fillStyle = '#c9b98d';
+      g.fillText('Tap a pirate to see their tricks', b.W/2, rr.y + rr.h/2);
+    } else if (b.ready){
+      g.font = `700 ${Math.round(Math.min(b.W*0.05, 24))}px Georgia, serif`;
+      g.fillStyle = '#8ae09a';
+      g.fillText('✓ READY', b.W/2, rr.y + rr.h*0.4);
+      g.font = `italic ${Math.round(Math.min(b.W*0.032, 15))}px Georgia, serif`;
+      g.fillStyle = '#c9b98d';
+      g.fillText('waiting for the enemy…', b.W/2, rr.y + rr.h*1.05);
+    } else {
+      const pulse = 0.5 + Math.sin(now*5)*0.5;
+      g.fillStyle = '#d8ad4e';
+      g.beginPath();
+      g.roundRect ? g.roundRect(rr.x, rr.y, rr.w, rr.h, 8) : g.rect(rr.x, rr.y, rr.w, rr.h);
+      g.fill();
+      g.strokeStyle = `rgba(255,244,205,${0.35 + pulse*0.45})`; g.lineWidth = 2.5;
+      g.beginPath();
+      g.roundRect ? g.roundRect(rr.x, rr.y, rr.w, rr.h, 8) : g.rect(rr.x, rr.y, rr.w, rr.h);
+      g.stroke();
+      g.font = `700 ${Math.round(Math.min(rr.h*0.5, 22))}px Georgia, serif`;
+      g.fillStyle = '#241708';
+      g.fillText('READY', b.W/2, rr.y + rr.h/2);
+    }
   }
 }
 
 /* ---------------- boot ---------------- */
-const legend = document.getElementById('legend');
-const abIcon = ab => ab.img
-  ? `<img src="${assetUrl(ab.img)}" alt="" style="width:17px;height:17px;border-radius:50%;vertical-align:-3px">`
-  : ab.icon;
-legend.innerHTML = CHARACTERS.map(c =>
-  `<div class="pu"><div class="ico">${c.accentIcon}</div><div>
-    <div class="nm">${c.name} <span style="opacity:.75;text-transform:none">${c.title}</span></div>
-    <div class="ds">${abIcon(c.basic)} <b>${c.basic.name}</b> (${c.basic.cd}s cooldown) — ${c.basic.desc}</div>
-    <div class="ds">${abIcon(c.ult)} <b>${c.ult.name}</b> (ultimate) — ${c.ult.desc}</div>
-  </div></div>`
-).join('');
-
-function drawFacesPreview(){
-  const cv = document.getElementById('facesPreview');
-  const n = BUTTON_KINDS.length, cell = 52, pad = 8;
-  const cols = Math.min(n, 8), rows = Math.ceil(n/cols);   // wrap wide rosters
-  cv.width = cols*cell; cv.height = rows*(cell) + pad;
-  const g = cv.getContext('2d');
-  BUTTON_KINDS.forEach((k, i)=>{
-    const x = (i%cols)*cell + cell/2, y = Math.floor(i/cols)*cell + cell/2, r = cell*0.44;
-    drawButtonFace(g, x, y, r, k, i*7);
-  });
-}
-
 const game = new Game(document.getElementById('game'));
 window.game = game; // exposed for debugging / automated tests
 
@@ -2177,12 +2400,14 @@ if (!FS.supported() && /iPhone|iPad|iPod/.test(navigator.userAgent))
 
 loadAssets(()=>{
   game.resize();        // re-bake plank backgrounds with the real texture
-  drawFacesPreview();   // redraw the start-screen preview with any custom icons
 });
 probeCharSounds();      // discover any character voice/SFX files that exist
-drawFacesPreview();     // draw immediately too (procedural until assets load)
+// splash art via assetUrl so the inlined single-file build resolves it too
+if (assetExists('splash_screen.jpg'))
+  document.getElementById('startOverlay').style.backgroundImage =
+    `url("${assetUrl('splash_screen.jpg')}")`;
 
-document.getElementById('startBtn').addEventListener('click', ()=>{
+document.getElementById('playBtn').addEventListener('click', ()=>{
   Snd.ensure();
   preloadSfx();
   Music.start();
@@ -2190,12 +2415,42 @@ document.getElementById('startBtn').addEventListener('click', ()=>{
   document.getElementById('startOverlay').hidden = true;
   game.enterSelect();
 });
-document.getElementById('againBtn').addEventListener('click', ()=>{
-  Snd.ensure();
-  FS.enter();
-  document.getElementById('winOverlay').hidden = true;
-  game.enterSelect();
-});
+/* End-screen choices: each player picks Rematch or "Plz, no moar!". Both
+   must answer; a single "no moar" sends everyone back to the title. */
+const rematchChoices = [null, null];
+function resetRematchUI(){
+  rematchChoices[0] = rematchChoices[1] = null;
+  for (const half of document.querySelectorAll('.rematch-half')){
+    half.querySelector('.rematch-buttons').style.visibility = 'visible';
+    half.querySelector('.rematch-status').textContent = '';
+  }
+}
+for (const btn of document.querySelectorAll('#winOverlay .btn')){
+  btn.addEventListener('click', ()=>{
+    Snd.ensure();
+    const side = +btn.dataset.side, choice = btn.dataset.choice;
+    if (rematchChoices[side]) return;
+    rematchChoices[side] = choice;
+    play('click', 0.7);
+    const half = btn.closest('.rematch-half');
+    half.querySelector('.rematch-buttons').style.visibility = 'hidden';
+    half.querySelector('.rematch-status').textContent =
+      choice === 'again' ? 'ready for another round…' : 'headin’ back to port…';
+    if (rematchChoices[0] && rematchChoices[1]){
+      const quit = rematchChoices.includes('stop');
+      setTimeout(()=>{
+        document.getElementById('winOverlay').hidden = true;
+        resetRematchUI();
+        if (quit){
+          game.backToTitle();
+          document.getElementById('startOverlay').hidden = false;
+        } else {
+          game.rematch(performance.now()/1000);
+        }
+      }, 500);
+    }
+  });
+}
 </script>
 </body>
 </html>
