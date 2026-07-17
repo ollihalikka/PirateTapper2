@@ -51,6 +51,7 @@
     display:block;
     background:#0a0f18 center/cover no-repeat;
   }
+  #startOverlay[hidden]{ display:none; }   /* the ID rule above outranks .overlay[hidden] */
   #playBtn{
     position:absolute;
     right:max(clamp(14px,3.5vw,36px), env(safe-area-inset-right));
