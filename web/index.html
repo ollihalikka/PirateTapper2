@@ -277,6 +277,7 @@ const SFX_FILES = {
   pop:  ['pop1.mp3','pop2.mp3'],
   wrong:['wrong.mp3'],
   boom: ['boom1.mp3','boom2.mp3','boom3.mp3','boom4.mp3'],
+  explode: ['explosion-sfx.mp3','explosion-sfx2.mp3','explosion-sfx3.mp3','explosion-sfx4.mp3'],
   click:['click1.mp3'],
   cast: ['click2.mp3'],
 };
@@ -1074,8 +1075,11 @@ class Board {
   popButton(b, now){
     this.buttons.splice(this.buttons.indexOf(b), 1);
     this.nextOrd++;
-    play('pop', 1, 0.95 + b.ord*0.05);
-    this.burst(b.x, b.y, b.kind.bg, now);
+    // every correct pop IS a cannon shot: the button detonates and a ball
+    // streaks off toward the enemy ship across the divider
+    play('explode', 0.55, 0.92 + Math.random()*0.2);
+    this.buttonBlast(b.x, b.y, b.r, b.kind.bg, now);
+    this.fireShot(b.x, b.y, now);
     this.game.applyDamage(1 - this.idx, this.wave.dmg, null, null, this.idx);
     if (b.powder){
       play('boom', 0.9);
@@ -1141,6 +1145,22 @@ class Board {
     this.particles.push({ type:'ring', x, y, t0:now, life:0.5, size:size*1.5, color:'#ffca6a' });
     this.burst(x, y, '#ff9c3f', now, 26);
     this.smoke(x, y, now);
+  }
+  /* a popped button detonating: comic fireball + the button's own splinters */
+  buttonBlast(x, y, r, color, now){
+    this.particles.push({ type:'boom', x, y, size:r*1.05, t0:now, life:0.34 });
+    this.particles.push({ type:'ring', x, y, t0:now, life:0.4, size:r*1.35, color:'#ffca6a' });
+    this.burst(x, y, color, now, 10);            // splinters keep the mark's color
+    this.burst(x, y, '#ff9c3f', now, 8);         // embers
+    this.smoke(x, y, now);
+  }
+  /* the cannonball leaving the deck toward the enemy ship (local y=0 is the
+     divider). Pure telegraph — the damage itself lands instantly. */
+  fireShot(x, y, now){
+    const drift = (this.W/2 - x)*0.35;           // balls converge on the enemy hull
+    this.particles.push({ type:'shot', x, y, t0:now, life:0.42,
+      tx: clamp(x + drift + rand(-24, 24), 16, this.W - 16), ty: -10,
+      size: clamp(this.R*0.24, 5, 9) });
   }
   cannonImpact(x, y, now){
     play('boom', 1);
@@ -1661,8 +1681,8 @@ class Game {
     for (const p of b.particles) if (p.bg) this.renderParticle(g, p, now);
     // buttons
     for (const bt of b.buttons) this.renderButton(g, b, bt, now);
-    // effect particles
-    for (const p of b.particles) if (!p.bg) this.renderParticle(g, p, now);
+    // effect particles (cannonball shots render later, above the HUD)
+    for (const p of b.particles) if (!p.bg && p.type !== 'shot') this.renderParticle(g, p, now);
     // incoming cannonballs arcing over from the enemy ship (divider side)
     for (const h of this.pendingHits){
       if (h.board !== b.idx || !h.fired || now >= h.t) continue;
@@ -1782,6 +1802,8 @@ class Game {
     this.renderIntrusion(g, b, now);
     this.renderHud(g, b, now);
     this.renderAbilities(g, b, now);
+    // outgoing cannonballs pass over the HUD on their way to the enemy ship
+    for (const p of b.particles) if (p.type === 'shot') this.renderParticle(g, p, now);
   }
   /* The caster's portrait sails in over the victim's deck under a spotlight,
      gloats, and sails back — the whole board dims and locks beneath them. */
@@ -1884,6 +1906,28 @@ class Game {
       g.fill();
     } else if (p.type === 'boom'){
       drawBoom(g, p.x, p.y, p.size, t);
+    } else if (p.type === 'shot'){
+      const e = t*t;                                  // a fired ball accelerates
+      const x = p.x + (p.tx - p.x)*e, y = p.y + (p.ty - p.y)*e;
+      for (let k = 3; k >= 1; k--){                   // smoke trail behind it
+        const tb = Math.max(0, t - k*0.075), eb = tb*tb;
+        g.globalAlpha = (1 - t)*0.16;
+        g.fillStyle = '#c9cdd2';
+        g.beginPath();
+        g.arc(p.x + (p.tx - p.x)*eb, p.y + (p.ty - p.y)*eb, p.size*(0.55 + k*0.14), 0, TAU);
+        g.fill();
+      }
+      const s = p.size*(1 + Math.sin(Math.min(1, t)*Math.PI)*0.35);   // swells mid-flight
+      g.globalAlpha = Math.min(1, (1 - t)*4);         // wink out at the hull
+      g.fillStyle = '#15181c';
+      g.beginPath(); g.arc(x, y, s, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(255,255,255,0.3)';
+      g.beginPath(); g.arc(x - s*0.3, y - s*0.3, s*0.32, 0, TAU); g.fill();
+      g.strokeStyle = `rgba(255,190,90,${(1 - t)*0.7})`;              // hot streak
+      g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(x, y);
+      const bx = p.x + (p.tx - p.x)*Math.max(0, t - 0.12)**2, by = p.y + (p.ty - p.y)*Math.max(0, t - 0.12)**2;
+      g.lineTo(bx, by); g.stroke();
     } else if (p.type === 'ember'){
       g.globalAlpha = (1-t)*(0.5 + 0.4*Math.sin(now*20 + p.ph));
       g.fillStyle = p.color;
