@@ -109,7 +109,21 @@
   #fsBtn:active{ transform:translateY(-50%) scale(0.9); }
   #fsBtn[hidden]{ display:none; }
 
-  #winOverlay{ background:rgba(9,7,4,0.45); }
+  /* end screen: one choice row per player, each facing its own side */
+  #winOverlay{ background:rgba(9,7,4,0.45); flex-direction:column; }
+  .rematch-half{
+    flex:1; width:100%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:clamp(10px,2vh,18px);
+  }
+  #rematchP2{ transform:rotate(180deg); }
+  .rematch-buttons{ display:flex; gap:clamp(12px,3vw,22px); }
+  .btn.small{ font-size:clamp(13px,2vh,17px); padding:.65em 1.2em; letter-spacing:.1em; }
+  .rematch-status{
+    font-family:Georgia, serif; font-style:italic;
+    font-size:clamp(13px,1.9vh,16px); color:var(--parch-dim);
+    min-height:1.3em;
+  }
 </style>
 </head>
 <body>
@@ -126,9 +140,21 @@
   </div>
 
   <div class="overlay" id="winOverlay" hidden>
-    <div class="panel">
+    <div class="rematch-half" id="rematchP2">
       <div class="eyebrow">The powder settles…</div>
-      <button class="btn" id="againBtn">Run It Back</button>
+      <div class="rematch-buttons">
+        <button class="btn small" data-side="1" data-choice="stop">Plz, no moar!</button>
+        <button class="btn small" data-side="1" data-choice="again">Rematch</button>
+      </div>
+      <div class="rematch-status"></div>
+    </div>
+    <div class="rematch-half" id="rematchP1">
+      <div class="eyebrow">The powder settles…</div>
+      <div class="rematch-buttons">
+        <button class="btn small" data-side="0" data-choice="stop">Plz, no moar!</button>
+        <button class="btn small" data-side="0" data-choice="again">Rematch</button>
+      </div>
+      <div class="rematch-status"></div>
     </div>
   </div>
 </div>
@@ -152,19 +178,20 @@ const TAU   = Math.PI*2;
 /* ---------------- tuning ---------------- */
 const MAX_HP = 300;
 const AUTO_CLEAR_DMG = 30;
-const WRONG_TAP_DMG = 10;
-const EMPTY_TAP_DMG = 10;
+const WRONG_TAP_DMG = 5;
+const EMPTY_TAP_DMG = 5;
 const POWDER_SELF_DMG = 12;
 const BASIC_FIRST_CD = 4;   // basics come online shortly after the start
 const ULT_MAX = 100;
 
 /* Waves ported from the Unity GameManager.CreateWaves():
    n buttons, seconds to form, seconds to clear, damage per pop. */
+/* Every correct pop is a 10-damage cannon shot; waves ramp size/speed only. */
 const WAVES = [
-  {n:2,form:1.0,clear:5,dmg:5}, {n:2,form:0.8,clear:5,dmg:5},
-  {n:3,form:1.0,clear:5,dmg:5}, {n:3,form:0.8,clear:5,dmg:5}, {n:3,form:1.2,clear:5,dmg:5},
-  {n:4,form:0.8,clear:5,dmg:7}, {n:4,form:1.2,clear:5,dmg:7}, {n:4,form:1.0,clear:5,dmg:7},
-  {n:4,form:0.8,clear:5,dmg:7}, {n:4,form:1.0,clear:5,dmg:7}, {n:4,form:1.2,clear:5,dmg:7},
+  {n:2,form:1.0,clear:5,dmg:10}, {n:2,form:0.8,clear:5,dmg:10},
+  {n:3,form:1.0,clear:5,dmg:10}, {n:3,form:0.8,clear:5,dmg:10}, {n:3,form:1.2,clear:5,dmg:10},
+  {n:4,form:0.8,clear:5,dmg:10}, {n:4,form:1.2,clear:5,dmg:10}, {n:4,form:1.0,clear:5,dmg:10},
+  {n:4,form:0.8,clear:5,dmg:10}, {n:4,form:1.0,clear:5,dmg:10}, {n:4,form:1.2,clear:5,dmg:10},
   {n:5,form:1.2,clear:5,dmg:10},{n:5,form:1.2,clear:5,dmg:10},{n:5,form:1.0,clear:5,dmg:10},
   {n:5,form:1.0,clear:5,dmg:10},{n:5,form:0.8,clear:5,dmg:10},{n:5,form:1.2,clear:5,dmg:10},
   {n:5,form:0.8,clear:5,dmg:10},{n:5,form:1.0,clear:5,dmg:10},{n:5,form:0.8,clear:5,dmg:10},
@@ -172,7 +199,7 @@ const WAVES = [
 function waveFor(i){
   if (i < WAVES.length) return WAVES[i];
   const k = i - WAVES.length; // endless overtime: tighter and meaner
-  return { n:6, form:0.7, clear:Math.max(3.2, 4.6 - k*0.15), dmg:12 };
+  return { n:6, form:0.7, clear:Math.max(3.2, 4.6 - k*0.15), dmg:10 };
 }
 
 /* Character kits: each pirate has a cooldown basic and an ultimate
@@ -181,10 +208,10 @@ const CHARACTERS = [
   { id:'redbeard', name:'Redbeard', title:'the Cannoneer', avatar:0, accentIcon:'💣',
     theme:{ glow:'#ff7a30', particle:'ember', deck:null },   // the default ship
     basic:{ icon:'💣', img:'icons/balls.png', name:'Pot Shot', cd:8,
-            desc:'Lob a cannonball at the enemy deck (6 damage).',
+            desc:'Lob a cannonball at the enemy deck (15 damage).',
             flavor:'A quick cannonball lobbed across the water to rattle their deck.' },
     ult:  { icon:'💥', img:'icons/cannon.png', name:'Broadside',
-            desc:'Rake the enemy deck with five cannonballs (8 damage each).',
+            desc:'Rake the enemy deck with five cannonballs (10 damage each).',
             flavor:'Every gun on the ship roars at once in a thunderous barrage.' } },
   { id:'frostjaw', name:'White Death', title:'the Iceberg', avatar:2, accentIcon:'❄️',
     theme:{ glow:'#a8dcff', particle:'flake', deck:'snow' }, // frost-bitten deck
@@ -961,6 +988,11 @@ class Board {
       this.blinkUntil = now + 0.12;
       this.nextBlink = now + rand(2, 6);
     }
+    for (const p of this.particles)   // a shot reaching the far hull strikes it
+      if (p.type === 'shot' && !p.landed && now - p.t0 >= p.life){
+        p.landed = true;
+        this.shotImpact(p.tx, p.ty, p.dmg, now);
+      }
     this.inkBlobs = this.inkBlobs.filter(k => now < k.until);
     this.particles = this.particles.filter(p => now - p.t0 < p.life);
     this.floats = this.floats.filter(f => now - f.t0 < 1.1);
@@ -1079,7 +1111,7 @@ class Board {
     // streaks off toward the enemy ship across the divider
     play('explode', 0.55, 0.92 + Math.random()*0.2);
     this.buttonBlast(b.x, b.y, b.r, b.kind.bg, now);
-    this.fireShot(b.x, b.y, now);
+    this.fireShot(b.x, b.y, this.wave.dmg, now);
     this.game.applyDamage(1 - this.idx, this.wave.dmg, null, null, this.idx);
     if (b.powder){
       play('boom', 0.9);
@@ -1155,12 +1187,27 @@ class Board {
     this.smoke(x, y, now);
   }
   /* the cannonball leaving the deck toward the enemy ship (local y=0 is the
-     divider). Pure telegraph — the damage itself lands instantly. */
-  fireShot(x, y, now){
+     divider; past it lies the water and the enemy hull). Pure telegraph —
+     the damage itself lands instantly. */
+  fireShot(x, y, dmg, now){
     const drift = (this.W/2 - x)*0.35;           // balls converge on the enemy hull
-    this.particles.push({ type:'shot', x, y, t0:now, life:0.42,
-      tx: clamp(x + drift + rand(-24, 24), 16, this.W - 16), ty: -10,
-      size: clamp(this.R*0.24, 5, 9) });
+    this.particles.push({ type:'shot', late:true, x, y, t0:now, life:0.22, dmg,
+      tx: clamp(x + drift + rand(-24, 24), 16, this.W - 16),
+      ty: -this.game.divH*0.8,                   // the far hull, just shy of their HP bar
+      size: clamp(this.R*0.24, 5, 9), landed:false });
+  }
+  /* the strike on the enemy hull: splinters, flash, and the damage number */
+  shotImpact(x, y, dmg, now){
+    for (let i=0;i<10;i++){
+      const a = rand(0,TAU), sp = rand(60,240);
+      this.particles.push({ type:'spark', late:true, x, y,
+        vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+        t0:now, life:rand(0.3,0.55), size:rand(2,4.5),
+        color: i%2 ? '#c9a35e' : '#ff9c3f' });   // hull splinters + embers
+    }
+    this.particles.push({ type:'ring', late:true, x, y, t0:now, life:0.35, size:this.R*0.9, color:'#ffca6a' });
+    this.particles.push({ type:'boom', late:true, x, y, size:this.R*0.55, t0:now, life:0.26 });
+    this.floats.push({ txt:'-'+dmg, color:'#ff5a4d', x, y, t0:now, late:true });
   }
   cannonImpact(x, y, now){
     play('boom', 1);
@@ -1288,6 +1335,36 @@ class Game {
       b.setGeom(this.W, this.bH);
       b.nextBlink = now + rand(1, 3);
     }
+  }
+  /* someone said "no moar": back to the splash screen */
+  backToTitle(){
+    this.phase = 'idle';
+    this.running = false;
+    this.pendingHits = [];
+    this.intrusions = [];
+  }
+  /* both said Rematch: same pirates square up again from the VS splash */
+  rematch(now){
+    this.pendingHits = [];
+    this.intrusions = [];
+    for (const b of this.boards){
+      const ci = b.charIdx;
+      b.reset();
+      b.charIdx = ci;
+      b.character = CHARACTERS[ci];
+      b.avatar = AVATARS[CHARACTERS[ci].avatar];
+      b.voice = b.avatar.voice;
+      b.theme = CHARACTERS[ci].theme;
+      b.planks = makePlanks(b.W, b.H, b.theme.glow, b.theme.deck);
+      b.nextBlink = now + rand(1, 3);
+    }
+    this.phase = 'countdown';
+    this.vsStartAt = now;
+    this.vsTaps = [0, 0];
+    this.firstSpeaker = -1;
+    this.vsDeadline = now + 3.0;
+    this.startSeqBegun = false;
+    play('cast', 0.9);
   }
   /* three character cards per board, tapped on each player's own side */
   cardRect(b, i){
@@ -1433,7 +1510,7 @@ class Game {
       me.setMood('smile', 0.8, now);
       me.addFloat(ch.basic.icon + ' ' + ch.basic.name + '!', '#e8c469', me.W/2, me.hudH + 30, now);
       switch (ch.id){
-        case 'redbeard': this.scheduleCannons(1 - playerIdx, 1, 6, now); break;
+        case 'redbeard': this.scheduleCannons(1 - playerIdx, 1, 15, now); break;
         case 'frostjaw': enemy.applyIce(now, 0.8); break;
         case 'inkeye':   enemy.applyInk(now, 1, 2.5); break;
       }
@@ -1477,9 +1554,12 @@ class Game {
     b.hpFlashUntil = tNow + 0.4;
     if (tNow >= b.hurtSoundCdUntil && playCharSound(b.avatar, 'hurt', 0.85))
       b.hurtSoundCdUntil = tNow + 1.2;
-    const fx = x==null ? b.W - 60 : x;
-    const fy = y==null ? b.hudH + 26 : y;
-    b.addFloat('-' + amt, '#ff5a4d', fx, fy, performance.now()/1000);
+    // tap shots show their number at the hull impact instead (shooter side)
+    if (!(x == null && fromIdx != null)){
+      const fx = x==null ? b.W - 60 : x;
+      const fy = y==null ? b.hudH + 26 : y;
+      b.addFloat('-' + amt, '#ff5a4d', fx, fy, tNow);
+    }
     if (b.hp <= 0) this.endGame(1 - boardIdx);
   }
   endGame(winnerIdx){
@@ -1497,6 +1577,7 @@ class Game {
       playCharSound(winB.avatar, 'victory', 1, ()=>{ Snd.fanfare(); });
     });
     setTimeout(()=>{
+      resetRematchUI();
       document.getElementById('winOverlay').hidden = false;
     }, 3000);
   }
@@ -1520,7 +1601,7 @@ class Game {
         if (!it.fired && k >= it.tIn + it.hover + it.tOut){
           it.fired = true;
           switch (caster.character.id){
-            case 'redbeard': this.scheduleCannons(it.target, 5, 8, now); break;
+            case 'redbeard': this.scheduleCannons(it.target, 5, 10, now); break;
             case 'frostjaw': victim.applyIce(now, 2.6); break;
             case 'inkeye':
               victim.applyGhost(now, 4);
@@ -1564,6 +1645,16 @@ class Game {
     this.renderBoard(g, this.boards[1], now);
     g.restore();
     this.renderDivider(g, now);
+    // cannonballs cross the water above everything, striking the far hull
+    g.save();
+    g.translate(0, this.divBot);
+    this.renderLateFx(g, this.boards[0], now);
+    g.restore();
+    g.save();
+    g.translate(this.W, this.divTop);
+    g.rotate(Math.PI);
+    this.renderLateFx(g, this.boards[1], now);
+    g.restore();
   }
   /* The gap between the boards is open sea: two ships side by side,
      hulls at the water's edge, cannons run out and aimed at each other. */
@@ -1681,8 +1772,8 @@ class Game {
     for (const p of b.particles) if (p.bg) this.renderParticle(g, p, now);
     // buttons
     for (const bt of b.buttons) this.renderButton(g, b, bt, now);
-    // effect particles (cannonball shots render later, above the HUD)
-    for (const p of b.particles) if (!p.bg && p.type !== 'shot') this.renderParticle(g, p, now);
+    // effect particles (shots + hull impacts render later, above the divider)
+    for (const p of b.particles) if (!p.bg && !p.late) this.renderParticle(g, p, now);
     // incoming cannonballs arcing over from the enemy ship (divider side)
     for (const h of this.pendingHits){
       if (h.board !== b.idx || !h.fired || now >= h.t) continue;
@@ -1771,8 +1862,9 @@ class Game {
         g.beginPath(); g.arc(f.x, f.y, 10+t*26, 0, TAU); g.stroke();
       }
     }
-    // floats
+    // floats (impact numbers render later, above the divider)
     for (const f of b.floats){
+      if (f.late) continue;
       const t = (now - f.t0)/1.1;
       g.globalAlpha = 1 - t;
       g.font = `700 ${Math.round(b.R*0.62)}px -apple-system, "Segoe UI", sans-serif`;
@@ -1802,8 +1894,23 @@ class Game {
     this.renderIntrusion(g, b, now);
     this.renderHud(g, b, now);
     this.renderAbilities(g, b, now);
-    // outgoing cannonballs pass over the HUD on their way to the enemy ship
-    for (const p of b.particles) if (p.type === 'shot') this.renderParticle(g, p, now);
+  }
+  /* Shots and their hull impacts, drawn last in the board's own transform so
+     the balls sail over the HUD and the divider ships to the enemy hull. */
+  renderLateFx(g, b, now){
+    for (const p of b.particles) if (p.late) this.renderParticle(g, p, now);
+    for (const f of b.floats){
+      if (!f.late) continue;
+      const t = (now - f.t0)/1.1;
+      g.globalAlpha = 1 - t;
+      g.font = `700 ${Math.round(b.R*0.62)}px -apple-system, "Segoe UI", sans-serif`;
+      g.textAlign='center'; g.textBaseline='middle';
+      g.strokeStyle = 'rgba(0,0,0,0.7)'; g.lineWidth = 4;
+      g.strokeText(f.txt, f.x, f.y - t*44);
+      g.fillStyle = f.color;
+      g.fillText(f.txt, f.x, f.y - t*44);
+      g.globalAlpha = 1;
+    }
   }
   /* The caster's portrait sails in over the victim's deck under a spotlight,
      gloats, and sails back — the whole board dims and locks beneath them. */
@@ -1907,27 +2014,27 @@ class Game {
     } else if (p.type === 'boom'){
       drawBoom(g, p.x, p.y, p.size, t);
     } else if (p.type === 'shot'){
-      const e = t*t;                                  // a fired ball accelerates
+      const e = Math.min(1, t);                       // full speed off the deck, no ease
       const x = p.x + (p.tx - p.x)*e, y = p.y + (p.ty - p.y)*e;
       for (let k = 3; k >= 1; k--){                   // smoke trail behind it
-        const tb = Math.max(0, t - k*0.075), eb = tb*tb;
+        const eb = Math.max(0, e - k*0.09);
         g.globalAlpha = (1 - t)*0.16;
         g.fillStyle = '#c9cdd2';
         g.beginPath();
         g.arc(p.x + (p.tx - p.x)*eb, p.y + (p.ty - p.y)*eb, p.size*(0.55 + k*0.14), 0, TAU);
         g.fill();
       }
-      const s = p.size*(1 + Math.sin(Math.min(1, t)*Math.PI)*0.35);   // swells mid-flight
-      g.globalAlpha = Math.min(1, (1 - t)*4);         // wink out at the hull
+      const s = p.size*(1 + Math.sin(e*Math.PI)*0.35);                // swells mid-flight
+      g.globalAlpha = 1;
       g.fillStyle = '#15181c';
       g.beginPath(); g.arc(x, y, s, 0, TAU); g.fill();
       g.fillStyle = 'rgba(255,255,255,0.3)';
       g.beginPath(); g.arc(x - s*0.3, y - s*0.3, s*0.32, 0, TAU); g.fill();
-      g.strokeStyle = `rgba(255,190,90,${(1 - t)*0.7})`;              // hot streak
+      g.strokeStyle = 'rgba(255,190,90,0.7)';                         // hot streak
       g.lineWidth = 1.5;
       g.beginPath(); g.moveTo(x, y);
-      const bx = p.x + (p.tx - p.x)*Math.max(0, t - 0.12)**2, by = p.y + (p.ty - p.y)*Math.max(0, t - 0.12)**2;
-      g.lineTo(bx, by); g.stroke();
+      const eb2 = Math.max(0, e - 0.18);
+      g.lineTo(p.x + (p.tx - p.x)*eb2, p.y + (p.ty - p.y)*eb2); g.stroke();
     } else if (p.type === 'ember'){
       g.globalAlpha = (1-t)*(0.5 + 0.4*Math.sin(now*20 + p.ph));
       g.fillStyle = p.color;
@@ -2257,9 +2364,6 @@ class Game {
       g.font = `700 ${Math.round(Math.min(rr.h*0.5, 22))}px Georgia, serif`;
       g.fillStyle = '#241708';
       g.fillText('READY', b.W/2, rr.y + rr.h/2);
-      g.font = `${Math.round(Math.min(b.W*0.028, 13))}px Georgia, serif`;
-      g.fillStyle = 'rgba(201,185,141,0.9)';
-      g.fillText('tap another pirate to switch', b.W/2, rr.y + rr.h + Math.min(b.H*0.028, 13));
     }
   }
 }
@@ -2332,12 +2436,42 @@ document.getElementById('playBtn').addEventListener('click', ()=>{
   document.getElementById('startOverlay').hidden = true;
   game.enterSelect();
 });
-document.getElementById('againBtn').addEventListener('click', ()=>{
-  Snd.ensure();
-  FS.enter();
-  document.getElementById('winOverlay').hidden = true;
-  game.enterSelect();
-});
+/* End-screen choices: each player picks Rematch or "Plz, no moar!". Both
+   must answer; a single "no moar" sends everyone back to the title. */
+const rematchChoices = [null, null];
+function resetRematchUI(){
+  rematchChoices[0] = rematchChoices[1] = null;
+  for (const half of document.querySelectorAll('.rematch-half')){
+    half.querySelector('.rematch-buttons').style.visibility = 'visible';
+    half.querySelector('.rematch-status').textContent = '';
+  }
+}
+for (const btn of document.querySelectorAll('#winOverlay .btn')){
+  btn.addEventListener('click', ()=>{
+    Snd.ensure();
+    const side = +btn.dataset.side, choice = btn.dataset.choice;
+    if (rematchChoices[side]) return;
+    rematchChoices[side] = choice;
+    play('click', 0.7);
+    const half = btn.closest('.rematch-half');
+    half.querySelector('.rematch-buttons').style.visibility = 'hidden';
+    half.querySelector('.rematch-status').textContent =
+      choice === 'again' ? 'ready for another round…' : 'headin’ back to port…';
+    if (rematchChoices[0] && rematchChoices[1]){
+      const quit = rematchChoices.includes('stop');
+      setTimeout(()=>{
+        document.getElementById('winOverlay').hidden = true;
+        resetRematchUI();
+        if (quit){
+          game.backToTitle();
+          document.getElementById('startOverlay').hidden = false;
+        } else {
+          game.rematch(performance.now()/1000);
+        }
+      }, 500);
+    }
+  });
+}
 </script>
 </body>
 </html>
