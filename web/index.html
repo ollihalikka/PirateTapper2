@@ -45,49 +45,45 @@
     font-size:clamp(11px,1.5vh,13px); letter-spacing:.42em; text-transform:uppercase;
     color:var(--gold-dim); margin-bottom:4px;
   }
-  h1{
-    font-family:Georgia, "Times New Roman", serif;
-    font-weight:700; line-height:.9; text-wrap:balance; text-transform:uppercase;
-    font-size:clamp(42px,8.4vh,72px); letter-spacing:.015em;
-    color:var(--gold);
-    background:linear-gradient(#fbe7a6, #e8c469 42%, #b98f38);
-    -webkit-background-clip:text; background-clip:text;
-    -webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 2px 0 #4a3413) drop-shadow(0 8px 26px rgba(232,196,105,.28));
+  /* Start screen: the splash art is the whole show. The image is set from
+     JS via assetUrl() so the single-file build resolves it when inlined. */
+  #startOverlay{
+    display:block;
+    background:#0a0f18 center/cover no-repeat;
   }
-  h1 .vs{
-    display:block; -webkit-text-fill-color:var(--parch-dim); color:var(--parch-dim);
-    font-size:.3em; letter-spacing:.66em; text-indent:.66em; margin-top:.6em; filter:none;
+  #playBtn{
+    position:absolute;
+    right:max(clamp(14px,3.5vw,36px), env(safe-area-inset-right));
+    bottom:max(clamp(16px,3vh,48px), env(safe-area-inset-bottom));
+    width:clamp(60px,16vw,92px); height:clamp(60px,16vw,92px);
+    border-radius:50%; cursor:pointer; padding:0;
+    background:radial-gradient(circle at 35% 30%, #f9e09a, #d8ad4e 55%, #a5762c);
+    border:2px solid #7c6127;
+    outline:3px solid rgba(232,196,105,.4); outline-offset:4px;
+    box-shadow:0 5px 0 #6b5322, 0 14px 40px rgba(0,0,0,.6);
+    display:flex; align-items:center; justify-content:center;
   }
-  .tagline{
-    margin:clamp(12px,2.4vh,20px) auto 0; max-width:32ch;
-    font-family:Georgia, serif; font-style:italic;
-    font-size:clamp(14px,2vh,17.5px); line-height:1.4; color:var(--parch-dim);
+  #playBtn svg{
+    width:44%; height:44%; margin-left:7%;
+    fill:#241708; filter:drop-shadow(0 1px 0 rgba(255,240,200,.5));
   }
-  .pillars{
-    display:grid; grid-template-columns:repeat(3,1fr); gap:clamp(8px,2vw,14px);
-    margin:clamp(16px,3.2vh,28px) 0;
+  #playBtn:active{ transform:translateY(4px); box-shadow:0 1px 0 #6b5322, 0 8px 22px rgba(0,0,0,.5); }
+  #playBtn:focus-visible{ outline:3px solid var(--parch); }
+  @media (prefers-reduced-motion: no-preference){
+    #playBtn{ animation:playglow 2.4s ease-in-out infinite; }
+    @keyframes playglow{
+      0%,100%{ box-shadow:0 5px 0 #6b5322, 0 14px 40px rgba(0,0,0,.6); }
+      50%{ box-shadow:0 5px 0 #6b5322, 0 14px 52px rgba(232,196,105,.55); }
+    }
   }
-  .pillar{
-    display:flex; flex-direction:column; align-items:center; gap:4px;
-    padding:clamp(11px,2vh,16px) 6px; border-radius:11px;
-    background:rgba(20,12,6,.4); border:1px solid rgba(232,196,105,.18);
+  #startOverlay .hint{
+    position:absolute; left:max(14px, env(safe-area-inset-left));
+    bottom:max(10px, env(safe-area-inset-bottom));
+    margin:0; text-align:left;
+    max-width:calc(100vw - clamp(60px,16vw,92px) - clamp(14px,3.5vw,36px) - 34px);
+    color:#cdd7e2; text-shadow:0 1px 3px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.7);
   }
-  .pillar .pi{ font-size:clamp(21px,3.1vh,27px); filter:drop-shadow(0 2px 3px rgba(0,0,0,.55)); }
-  .pillar b{
-    font-family:Georgia, serif; font-size:clamp(12px,1.7vh,14px);
-    letter-spacing:.13em; text-transform:uppercase; color:var(--gold);
-  }
-  .pillar span:last-child{ font-size:clamp(10.5px,1.5vh,12px); line-height:1.28; color:var(--parch-dim); }
-  .faces{ margin:clamp(4px,1.4vh,12px) auto clamp(6px,1.6vh,14px); }
-  #facesPreview{
-    display:block; width:100%; max-width:340px; height:auto; margin:0 auto;
-    border-radius:10px; opacity:.96;
-  }
-  .faces-caption{
-    font-family:Georgia, serif; font-size:10.5px; letter-spacing:.26em; text-transform:uppercase;
-    color:var(--gold-dim); margin-top:9px;
-  }
+  #startOverlay #iosHint{ bottom:calc(max(10px, env(safe-area-inset-bottom)) + 32px); }
   .btn{
     font-family:Georgia, "Times New Roman", serif;
     font-size:clamp(18px,2.8vh,22px); letter-spacing:.16em; text-transform:uppercase;
@@ -96,17 +92,9 @@
     border-radius:7px; padding:.8em 2.1em; cursor:pointer;
     box-shadow:0 4px 0 #6b5322, 0 10px 30px rgba(0,0,0,.45);
   }
-  #startBtn{ margin-top:clamp(4px,1.4vh,12px); }
   .btn:active{ transform:translateY(3px); box-shadow:0 1px 0 #6b5322; }
   .btn:focus-visible{ outline:3px solid var(--parch); }
   .hint{ margin-top:14px; font-size:11.5px; letter-spacing:.08em; color:#6f7f92; }
-  @media (prefers-reduced-motion: no-preference){
-    #startBtn{ animation:btnglow 2.6s ease-in-out infinite; }
-    @keyframes btnglow{
-      0%,100%{ box-shadow:0 4px 0 #6b5322, 0 10px 30px rgba(0,0,0,.45); }
-      50%{ box-shadow:0 4px 0 #6b5322, 0 12px 42px rgba(232,196,105,.42); }
-    }
-  }
 
   #fsBtn{
     position:fixed; right:10px; top:50%; transform:translateY(-50%);
@@ -121,11 +109,6 @@
   #fsBtn[hidden]{ display:none; }
 
   #winOverlay{ background:rgba(9,7,4,0.45); }
-  .flag{ font-size:clamp(44px,8.5vh,68px); margin-bottom:2px; filter:drop-shadow(0 5px 16px rgba(0,0,0,.6)); }
-  @media (prefers-reduced-motion: no-preference){
-    .flag{ animation:bob 2.6s ease-in-out infinite; }
-    @keyframes bob{ 0%,100%{transform:rotate(-4deg)} 50%{transform:rotate(4deg)} }
-  }
 </style>
 </head>
 <body>
@@ -134,24 +117,11 @@
   <button id="fsBtn" hidden aria-label="Toggle full screen">⛶</button>
 
   <div class="overlay" id="startOverlay">
-    <div class="panel">
-      <div class="flag">🏴‍☠️</div>
-      <div class="eyebrow">Two pirates · one deck</div>
-      <h1>Pirate Tapper<span class="vs">Showdown</span></h1>
-      <p class="tagline">A duel of memory, sabotage &amp; speed — sit facing each other and pop yer marks in the order they surface.</p>
-      <div class="pillars">
-        <div class="pillar"><span class="pi">🧠</span><b>Memory</b><span>Watch the order, pop it back</span></div>
-        <div class="pillar"><span class="pi">⚔️</span><b>Sabotage</b><span>Freeze, curse &amp; bombard yer foe</span></div>
-        <div class="pillar"><span class="pi">⚡</span><b>Speed</b><span>Faster, cleaner clears hit harder</span></div>
-      </div>
-      <div class="faces">
-        <canvas id="facesPreview"></canvas>
-        <div class="faces-caption">The marks ye must remember</div>
-      </div>
-      <button class="btn" id="startBtn">Start the Showdown</button>
-      <div class="hint">Best on a touchscreen laid flat between two players · sound on</div>
-      <div class="hint" id="iosHint" hidden>iPhone: for true full screen, open the Share menu and “Add to Home Screen”.</div>
-    </div>
+    <button id="playBtn" aria-label="Start the Showdown">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15c0 .8.9 1.3 1.6.9l12.2-7.5c.7-.4.7-1.4 0-1.8L8.6 3.6c-.7-.4-1.6.1-1.6.9z"/></svg>
+    </button>
+    <div class="hint">Best on a touchscreen laid flat between two players · sound on</div>
+    <div class="hint" id="iosHint" hidden>iPhone: for true full screen, open the Share menu and “Add to Home Screen”.</div>
   </div>
 
   <div class="overlay" id="winOverlay" hidden>
@@ -2250,18 +2220,6 @@ class Game {
 }
 
 /* ---------------- boot ---------------- */
-function drawFacesPreview(){
-  const cv = document.getElementById('facesPreview');
-  const n = BUTTON_KINDS.length, cell = 52, pad = 8;
-  const cols = Math.min(n, 8), rows = Math.ceil(n/cols);   // wrap wide rosters
-  cv.width = cols*cell; cv.height = rows*(cell) + pad;
-  const g = cv.getContext('2d');
-  BUTTON_KINDS.forEach((k, i)=>{
-    const x = (i%cols)*cell + cell/2, y = Math.floor(i/cols)*cell + cell/2, r = cell*0.44;
-    drawButtonFace(g, x, y, r, k, i*7);
-  });
-}
-
 const game = new Game(document.getElementById('game'));
 window.game = game; // exposed for debugging / automated tests
 
@@ -2314,12 +2272,14 @@ if (!FS.supported() && /iPhone|iPad|iPod/.test(navigator.userAgent))
 
 loadAssets(()=>{
   game.resize();        // re-bake plank backgrounds with the real texture
-  drawFacesPreview();   // redraw the start-screen preview with any custom icons
 });
 probeCharSounds();      // discover any character voice/SFX files that exist
-drawFacesPreview();     // draw immediately too (procedural until assets load)
+// splash art via assetUrl so the inlined single-file build resolves it too
+if (assetExists('splash_screen.jpg'))
+  document.getElementById('startOverlay').style.backgroundImage =
+    `url("${assetUrl('splash_screen.jpg')}")`;
 
-document.getElementById('startBtn').addEventListener('click', ()=>{
+document.getElementById('playBtn').addEventListener('click', ()=>{
   Snd.ensure();
   preloadSfx();
   Music.start();
