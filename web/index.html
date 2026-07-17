@@ -988,11 +988,23 @@ class Board {
       this.blinkUntil = now + 0.12;
       this.nextBlink = now + rand(2, 6);
     }
-    for (const p of this.particles)   // a shot reaching the far hull strikes it
-      if (p.type === 'shot' && !p.landed && now - p.t0 >= p.life){
-        p.landed = true;
-        this.shotImpact(p.tx, p.ty, p.dmg, now);
+    for (const p of this.particles){  // shot lifecycle: muzzle crack, then the strike
+      if (p.type !== 'shot') continue;
+      if (p.heavy && !p.fired && now >= p.t0){
+        p.fired = true;
+        play('boom', 0.35, 1.35);                      // muzzle crack at the gun
+        this.burst(p.x, p.y, '#ffd08a', now, 8);
       }
+      if (!p.landed && now - p.t0 >= p.life){
+        p.landed = true;
+        this.shotImpact(p.tx, p.ty, p.dmg, now, p.heavy);
+        if (p.heavy){                                  // ability shots land their damage here
+          play('boom', 0.9);
+          this.game.applyDamage(1 - this.idx, p.dmg, null, null, this.idx);
+          this.game.boards[1 - this.idx].shakeUntil = now + 0.3;
+        }
+      }
+    }
     this.inkBlobs = this.inkBlobs.filter(k => now < k.until);
     this.particles = this.particles.filter(p => now - p.t0 < p.life);
     this.floats = this.floats.filter(f => now - f.t0 < 1.1);
@@ -1187,32 +1199,37 @@ class Board {
     this.smoke(x, y, now);
   }
   /* the cannonball leaving the deck toward the enemy ship (local y=0 is the
-     divider; past it lies the water and the enemy hull). Pure telegraph —
-     the damage itself lands instantly. */
-  fireShot(x, y, dmg, now){
+     divider; past it lies the water and the enemy hull). Tap shots are pure
+     telegraph (damage lands instantly); heavy ability shots carry their
+     damage with them and deal it on impact. startAt in the future lets a
+     broadside rake the hull ball by ball. */
+  fireShot(x, y, dmg, now, heavy=false, startAt=null){
     const drift = (this.W/2 - x)*0.35;           // balls converge on the enemy hull
-    this.particles.push({ type:'shot', late:true, x, y, t0:now, life:0.22, dmg,
-      tx: clamp(x + drift + rand(-24, 24), 16, this.W - 16),
+    this.particles.push({ type:'shot', late:true, heavy, x, y,
+      t0: startAt == null ? now : startAt,
+      life: heavy ? 0.19 : 0.22,                 // ability shots hit harder AND faster
+      dmg,
+      tx: heavy ? rand(this.W*0.14, this.W*0.86)
+                : clamp(x + drift + rand(-24, 24), 16, this.W - 16),
       ty: -this.game.divH*0.8,                   // the far hull, just shy of their HP bar
-      size: clamp(this.R*0.24, 5, 9), landed:false });
+      size: heavy ? clamp(this.R*0.45, 10, 17) : clamp(this.R*0.24, 5, 9),
+      fired:false, landed:false });
   }
   /* the strike on the enemy hull: splinters, flash, and the damage number */
-  shotImpact(x, y, dmg, now){
-    for (let i=0;i<10;i++){
-      const a = rand(0,TAU), sp = rand(60,240);
+  shotImpact(x, y, dmg, now, heavy=false){
+    const n = heavy ? 20 : 10;
+    for (let i=0;i<n;i++){
+      const a = rand(0,TAU), sp = heavy ? rand(90,340) : rand(60,240);
       this.particles.push({ type:'spark', late:true, x, y,
         vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
-        t0:now, life:rand(0.3,0.55), size:rand(2,4.5),
+        t0:now, life:rand(0.3, heavy ? 0.7 : 0.55), size:heavy ? rand(3,6.5) : rand(2,4.5),
         color: i%2 ? '#c9a35e' : '#ff9c3f' });   // hull splinters + embers
     }
-    this.particles.push({ type:'ring', late:true, x, y, t0:now, life:0.35, size:this.R*0.9, color:'#ffca6a' });
-    this.particles.push({ type:'boom', late:true, x, y, size:this.R*0.55, t0:now, life:0.26 });
-    this.floats.push({ txt:'-'+dmg, color:'#ff5a4d', x, y, t0:now, late:true });
-  }
-  cannonImpact(x, y, now){
-    play('boom', 1);
-    this.explosion(x, y, this.R*1.6, now);
-    this.shakeUntil = now + 0.45;
+    this.particles.push({ type:'ring', late:true, x, y, t0:now, life:heavy ? 0.45 : 0.35,
+      size:this.R*(heavy ? 1.7 : 0.9), color:'#ffca6a' });
+    this.particles.push({ type:'boom', late:true, x, y, size:this.R*(heavy ? 1.2 : 0.55),
+      t0:now, life:heavy ? 0.36 : 0.26 });
+    this.floats.push({ txt:'-'+dmg, color:'#ff5a4d', x, y, t0:now, late:true, big:heavy });
   }
   /* --- particles --- */
   burst(x, y, color, now, n=14){
@@ -1304,7 +1321,6 @@ class Game {
     this.boards = [new Board(0,this), new Board(1,this)];
     this.phase = 'idle';     // idle | select | countdown | match
     this.running = false;
-    this.pendingHits = [];   // scheduled cannonballs
     this.intrusions = [];    // in-flight ult boarding taunts
     this.lastT = performance.now()/1000;
     this.resize();
@@ -1328,7 +1344,6 @@ class Game {
     const now = performance.now()/1000;
     this.phase = 'select';
     this.running = false;
-    this.pendingHits = [];
     this.intrusions = [];
     for (const b of this.boards){
       b.reset();
@@ -1340,12 +1355,10 @@ class Game {
   backToTitle(){
     this.phase = 'idle';
     this.running = false;
-    this.pendingHits = [];
     this.intrusions = [];
   }
   /* both said Rematch: same pirates square up again from the VS splash */
   rematch(now){
-    this.pendingHits = [];
     this.intrusions = [];
     for (const b of this.boards){
       const ci = b.charIdx;
@@ -1510,7 +1523,7 @@ class Game {
       me.setMood('smile', 0.8, now);
       me.addFloat(ch.basic.icon + ' ' + ch.basic.name + '!', '#e8c469', me.W/2, me.hudH + 30, now);
       switch (ch.id){
-        case 'redbeard': this.scheduleCannons(1 - playerIdx, 1, 15, now); break;
+        case 'redbeard': me.fireShot(me.basicX, me.puY, 15, now, true); break;
         case 'frostjaw': enemy.applyIce(now, 0.8); break;
         case 'inkeye':   enemy.applyInk(now, 1, 2.5); break;
       }
@@ -1532,16 +1545,6 @@ class Game {
                         now, T_IN + HOVER, false);
       this.intrusions.push({ caster: playerIdx, target: 1 - playerIdx, t0: now,
         tIn: T_IN, hover: HOVER, tOut: T_OUT, taunted: false, fired: false });
-    }
-  }
-  scheduleCannons(boardIdx, n, dmg, now){
-    const a = this.boards[boardIdx].playArea();
-    const FLIGHT = 0.35;   // each ball is visible in the air this long
-    for (let i=0;i<n;i++){
-      const x = rand(a.x0, a.x1), y = rand(a.y0, a.y1);
-      this.pendingHits.push({ fireT: now + i*0.38, t: now + FLIGHT + i*0.38,
-        flight: FLIGHT, board: boardIdx, dmg, x, y,
-        fx: clamp(x + rand(-70, 70), 20, this.W - 20), fired: false });
     }
   }
   /* the single choke-point every hit goes through — this is the
@@ -1601,7 +1604,10 @@ class Game {
         if (!it.fired && k >= it.tIn + it.hover + it.tOut){
           it.fired = true;
           switch (caster.character.id){
-            case 'redbeard': this.scheduleCannons(it.target, 5, 10, now); break;
+            case 'redbeard':                    // broadside: five guns, one by one
+              for (let bi=0; bi<5; bi++)
+                caster.fireShot(caster.ultX, caster.puY, 10, now, true, now + bi*0.28);
+              break;
             case 'frostjaw': victim.applyIce(now, 2.6); break;
             case 'inkeye':
               victim.applyGhost(now, 4);
@@ -1610,19 +1616,6 @@ class Game {
               break;
           }
           this.intrusions.splice(i, 1);
-        }
-      }
-      for (let i=this.pendingHits.length-1; i>=0; i--){
-        const h = this.pendingHits[i];
-        if (!h.fired && now >= h.fireT){       // muzzle crack at the enemy hull
-          h.fired = true;
-          play('boom', 0.3, 1.5);
-          this.boards[h.board].burst(h.fx, 8, '#ffd08a', now, 8);
-        }
-        if (now >= h.t){
-          this.boards[h.board].cannonImpact(h.x, h.y, now);
-          this.applyDamage(h.board, h.dmg, h.x, h.y);
-          this.pendingHits.splice(i,1);
         }
       }
     }
@@ -1774,20 +1767,6 @@ class Game {
     for (const bt of b.buttons) this.renderButton(g, b, bt, now);
     // effect particles (shots + hull impacts render later, above the divider)
     for (const p of b.particles) if (!p.bg && !p.late) this.renderParticle(g, p, now);
-    // incoming cannonballs arcing over from the enemy ship (divider side)
-    for (const h of this.pendingHits){
-      if (h.board !== b.idx || !h.fired || now >= h.t) continue;
-      const pr = clamp((now - h.fireT)/h.flight, 0, 1);
-      const cx = h.fx + (h.x - h.fx)*pr;
-      const cy = 2 + (h.y - 2)*pr;
-      const size = 5 + Math.sin(pr*Math.PI)*5;   // swells mid-arc
-      g.fillStyle = 'rgba(0,0,0,0.25)';
-      g.beginPath(); g.ellipse(cx+3, cy+6, size*0.9, size*0.5, 0, 0, TAU); g.fill();
-      g.fillStyle = '#15181c';
-      g.beginPath(); g.arc(cx, cy, size, 0, TAU); g.fill();
-      g.fillStyle = 'rgba(255,255,255,0.25)';
-      g.beginPath(); g.arc(cx-size*0.3, cy-size*0.3, size*0.3, 0, TAU); g.fill();
-    }
     // kraken ink sits on top of everything in play
     for (const k of b.inkBlobs){
       const age = now - k.t0, left = k.until - now;
@@ -1903,7 +1882,7 @@ class Game {
       if (!f.late) continue;
       const t = (now - f.t0)/1.1;
       g.globalAlpha = 1 - t;
-      g.font = `700 ${Math.round(b.R*0.62)}px -apple-system, "Segoe UI", sans-serif`;
+      g.font = `700 ${Math.round(b.R*(f.big ? 0.95 : 0.62))}px -apple-system, "Segoe UI", sans-serif`;
       g.textAlign='center'; g.textBaseline='middle';
       g.strokeStyle = 'rgba(0,0,0,0.7)'; g.lineWidth = 4;
       g.strokeText(f.txt, f.x, f.y - t*44);
@@ -1986,7 +1965,7 @@ class Game {
   }
   renderParticle(g, p, now){
     const t = (now - p.t0)/p.life;
-    if (t >= 1) return;
+    if (t < 0 || t >= 1) return;   // t<0: a broadside ball still waiting its turn
     if (p.type === 'spark'){
       g.globalAlpha = 1-t;
       g.fillStyle = p.color;
