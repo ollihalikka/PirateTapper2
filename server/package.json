@@ -1,0 +1,10 @@
+{
+  "name": "pirate-tapper-relay",
+  "version": "1.0.0",
+  "description": "WebSocket relay for Pirate Tapper Showdown device-vs-device play",
+  "type": "commonjs",
+  "main": "relay.js",
+  "scripts": { "start": "node relay.js" },
+  "license": "MIT",
+  "dependencies": { "ws": "^8.18.0" }
+}

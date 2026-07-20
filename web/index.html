@@ -80,6 +80,7 @@
   #startOverlay .hint{
     position:absolute; left:max(14px, env(safe-area-inset-left));
     bottom:max(10px, env(safe-area-inset-bottom));
+    pointer-events:none;   /* informational only — never intercept button taps */
     margin:0; text-align:left;
     max-width:calc(100vw - clamp(60px,16vw,92px) - clamp(14px,3.5vw,36px) - 34px);
     color:#cdd7e2; text-shadow:0 1px 3px rgba(0,0,0,.9), 0 0 14px rgba(0,0,0,.7);
@@ -113,6 +114,45 @@
   #fsBtn:active{ transform:translateY(-50%) scale(0.9); }
   #fsBtn[hidden]{ display:none; }
 
+  #lobbyOpen{
+    position:absolute;
+    left:max(clamp(14px,3.5vw,36px), env(safe-area-inset-left));
+    bottom:max(clamp(16px,3vh,48px), env(safe-area-inset-bottom));
+    font-family:"Pirata One", Georgia, serif; font-size:clamp(15px,2.2vh,19px);
+    letter-spacing:.06em; color:var(--gold);
+    background:rgba(23,16,11,0.82); border:1px solid rgba(232,196,105,0.55);
+    border-radius:8px; padding:.5em 1em; cursor:pointer;
+    text-shadow:0 1px 3px rgba(0,0,0,.9);
+  }
+  #lobbyOpen:active{ transform:translateY(2px); }
+  #lobby{ background:radial-gradient(ellipse at 50% 30%, #16243a 0%, var(--sea) 55%, var(--sea-deep) 100%); }
+  .lobby-panel{ display:flex; flex-direction:column; align-items:center; gap:clamp(12px,2.4vh,20px); }
+  .lobby-title{
+    font-family:"Pirata One", Georgia, serif; font-weight:400; text-transform:uppercase;
+    font-size:clamp(30px,6vh,48px); color:var(--gold); letter-spacing:.02em;
+  }
+  .lobby-lead{
+    font-family:"Jim Nightshade", Georgia, cursive; font-size:clamp(16px,2.3vh,20px);
+    color:var(--parch-dim); max-width:34ch; line-height:1.35;
+  }
+  .lobby-or{ font-family:Georgia, serif; font-size:13px; letter-spacing:.2em; color:var(--gold-dim); text-transform:uppercase; }
+  .lobby-join{ display:flex; gap:10px; align-items:center; }
+  #lobbyCode{
+    width:5em; font-family:"Pirata One", Georgia, serif; font-size:clamp(24px,4vh,34px);
+    text-align:center; letter-spacing:.24em; color:var(--parch);
+    background:rgba(10,7,4,0.6); border:1px solid rgba(232,196,105,0.5);
+    border-radius:8px; padding:.15em .2em;
+  }
+  #lobbyCode:focus{ outline:2px solid var(--gold); }
+  .lobby-note{
+    font-family:"Jim Nightshade", Georgia, cursive; font-size:clamp(16px,2.3vh,20px);
+    color:var(--gold); min-height:1.4em; letter-spacing:.02em;
+  }
+  .lobby-close{
+    margin-top:4px; background:none; border:none; cursor:pointer;
+    font-family:Georgia, serif; font-size:13px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--parch-dim);
+  }
   /* end screen: one choice row per player, each facing its own side */
   #winOverlay{ background:rgba(9,7,4,0.45); flex-direction:column; }
   .rematch-half{
@@ -139,8 +179,25 @@
     <button id="playBtn" aria-label="Start the Showdown">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15c0 .8.9 1.3 1.6.9l12.2-7.5c.7-.4.7-1.4 0-1.8L8.6 3.6c-.7-.4-1.6.1-1.6.9z"/></svg>
     </button>
+    <button id="lobbyOpen">⚔ Play online</button>
     <div class="hint">Best on a touchscreen laid flat between two players · sound on</div>
     <div class="hint" id="iosHint" hidden>iPhone: for true full screen, open the Share menu and “Add to Home Screen”.</div>
+  </div>
+
+  <div class="overlay" id="lobby" hidden>
+    <div class="panel lobby-panel">
+      <div class="eyebrow">Two ships, two devices</div>
+      <h2 class="lobby-title">Play online</h2>
+      <p class="lobby-lead">One captain hosts and reads out the code; the other joins with it. You'll each play on your own screen and see both decks.</p>
+      <button class="btn" id="lobbyHost">Host a duel</button>
+      <div class="lobby-or">— or —</div>
+      <div class="lobby-join">
+        <input id="lobbyCode" inputmode="numeric" maxlength="4" placeholder="0000" aria-label="Room code">
+        <button class="btn" id="lobbyJoin">Join</button>
+      </div>
+      <div class="lobby-note" id="lobbyNote"></div>
+      <button class="lobby-close" id="lobbyClose">Back</button>
+    </div>
   </div>
 
   <div class="overlay" id="winOverlay" hidden>
@@ -940,12 +997,15 @@ class Board {
     else if (this.state === 'forming'){
       while (this.spawned < this.wave.n && now >= this.spawnNextAt){
         const p = this.positions[this.spawned];
+        const kind = this.kinds[this.spawned];
         this.buttons.push({
           x:p.x, y:p.y, tx:p.x, ty:p.y, r:this.R,
-          ord:this.spawned, kind:this.kinds[this.spawned],
+          ord:this.spawned, kind,
           active:false, powder:false, failed:false, born:now,
         });
         play('pop', 0.85, 0.9 + this.spawned*0.05);
+        this.game.netSend('btn', { i:this.spawned, nx:p.x/this.W, ny:p.y/this.H,
+          k:BUTTON_KINDS.indexOf(kind), w:this.waveIndex });
         this.spawned++;
         this.spawnNextAt += this.spawnGap;
       }
@@ -954,6 +1014,7 @@ class Board {
         this.deadline = now + this.wave.clear;
         this.waveActivatedAt = now;
         this.state = 'active';
+        this.game.netSend('armed', { clear:this.wave.clear, dmg:this.wave.dmg });
       }
     }
     else if (this.state === 'active' && now > this.deadline) this.failWave(now);
@@ -1022,6 +1083,7 @@ class Board {
     this.setAnnounce('TOO SLOW!', '#e0483f', now, 1.0);
     this.state = 'failwait';
     this.stateUntil = now + 1.0;
+    this.game.netSend('fail', {});
   }
   clearWave(now){
     Snd.clear();
@@ -1040,6 +1102,7 @@ class Board {
     this.waveIndex++;
     this.state = 'prewave';
     this.stateUntil = now + 0.6;
+    this.game.netSend('clear', {});
   }
   setAnnounce(text, color, now, secs=1.2, big=true){
     this.announce = { text, color, until: now+secs, t0: now, big };
@@ -1128,6 +1191,7 @@ class Board {
     play('explode', 0.55, 0.92 + Math.random()*0.2);
     this.buttonBlast(b.x, b.y, b.r, b.kind.bg, now);
     this.fireShot(b.x, b.y, this.wave.dmg, now);
+    this.game.netSend('pop', { i:b.ord, dmg:this.wave.dmg });
     this.game.applyDamage(1 - this.idx, this.wave.dmg, null, null, this.idx);
     if (b.powder){
       play('boom', 0.9);
@@ -1136,6 +1200,49 @@ class Board {
       this.game.applyDamage(this.idx, POWDER_SELF_DMG, b.x, b.y);
     }
     if (this.buttons.length === 0 && this.state === 'active') this.clearWave(now);
+  }
+  /* ---- network mirror: online, this is the enemy's board, driven by their
+     events rather than simulated locally (see docs/GDD.md §10) ---- */
+  netSpawn(i, nx, ny, kindIdx, waveIndex, now){
+    this.waveIndex = waveIndex;
+    const kind = BUTTON_KINDS[kindIdx] || BUTTON_KINDS[0];
+    const x = nx*this.W, y = ny*this.H;
+    this.buttons.push({ x, y, tx:x, ty:y, r:this.R, ord:i, kind,
+      active:false, powder:false, failed:false, born:now });
+    play('pop', 0.7, 0.9 + i*0.05);
+    this.state = 'forming';
+  }
+  netArm(clear, now){
+    for (const b of this.buttons) b.active = true;
+    this.wave = { clear: clear || 5, n: this.buttons.length, dmg: 10 };  // for the fuse render
+    this.deadline = now + (clear || 5);
+    this.waveActivatedAt = now;
+    this.state = 'active';
+  }
+  netPop(i, dmg, now){   // the enemy popped ord i → their cannon hits me
+    const k = this.buttons.findIndex(b => b.ord === i);
+    if (k < 0) return;
+    const b = this.buttons[k];
+    this.buttons.splice(k, 1);
+    this.nextOrd = Math.max(this.nextOrd, i + 1);
+    play('explode', 0.5, 0.92 + Math.random()*0.2);
+    this.buttonBlast(b.x, b.y, b.r, b.kind.bg, now);
+    this.fireShot(b.x, b.y, dmg, now);                 // ball leaves the enemy mirror at me
+    this.game.applyDamage(1 - this.idx, dmg, null, null, this.idx);
+  }
+  netFail(now){
+    play('wrong', 0.7);
+    this.setMood('angry', 2, now);
+    for (const b of this.buttons) b.failed = true;
+    this.setAnnounce('TOO SLOW!', '#e0483f', now, 1.0);
+    this.state = 'failwait'; this.stateUntil = now + 1.0;
+  }
+  netClear(now){
+    Snd.clear();
+    this.setMood('smile', 1, now);
+    this.buttons = [];
+    this.waveIndex++;
+    this.state = 'prewave';
   }
   /* --- effects applied by the enemy --- */
   applyIce(now, secs){
@@ -1326,6 +1433,8 @@ class Game {
     this.phase = 'idle';     // idle | select | countdown | match
     this.running = false;
     this.intrusions = [];    // in-flight ult boarding taunts
+    this.online = false;     // device-vs-device: board 1 is a network mirror
+    this.isHost = false;     // host arbitrates the VS tap race and match start
     this.lastT = performance.now()/1000;
     this.resize();
     addEventListener('resize', ()=>this.resize());
@@ -1381,7 +1490,74 @@ class Game {
     this.firstSpeaker = -1;
     this.vsDeadline = now + 3.0;
     this.startSeqBegun = false;
+    this.goSent = false; this.firstClaim = null;
     play('cast', 0.9);
+  }
+  /* ---------------- online: device-vs-device via a relay ----------------
+     The screen stays two-board — you see the enemy's live board at the top,
+     mirrored from their events; you just can't tap it. */
+  enterOnline(isHost){
+    this.online = true;
+    this.isHost = isHost;
+    this.rematchVotes = [null, null];
+    this.enterSelect();
+  }
+  netSend(type, d){
+    if (this.online) Net.send({ e:type, d:d || {} });
+  }
+  onNet(m){                       // a game event arrived from the peer
+    const now = performance.now()/1000, enemy = this.boards[1];
+    switch (m.e){
+      case 'sel':    this.netEnemySelect(m.d.ci, now); break;
+      case 'ready':  enemy.ready = true; this.netMaybeStart(now); break;
+      case 'claim':  if (this.isHost) this.hostClaim(1, now); break;   // guest reached 5
+      case 'go':     this.netGo(m.d, now); break;
+      case 'btn':    enemy.netSpawn(m.d.i, m.d.nx, m.d.ny, m.d.k, m.d.w, now); break;
+      case 'armed':  enemy.netArm(m.d.clear, now); break;
+      case 'pop':    enemy.netPop(m.d.i, m.d.dmg, now); break;
+      case 'fail':   enemy.netFail(now); break;
+      case 'clear':  enemy.netClear(now); break;
+      case 'ability':this.netAbility(m.d, now); break;
+      case 'hp':     enemy.hp = m.d.hp; break;
+      case 'ko':     if (this.phase === 'match') this.endGame(0); break;   // enemy died → I win
+      case 'rematch':applyRematchVote(1, m.d.v); break;
+    }
+  }
+  /* online rematch: keep both pirates (incl. the mirrored enemy) and run a
+     fresh VS → match handshake. */
+  rematchOnline(now){
+    this.intrusions = [];
+    for (const b of this.boards){
+      const ci = b.charIdx;
+      b.reset();
+      b.charIdx = ci;
+      b.character = CHARACTERS[ci];
+      b.avatar = AVATARS[CHARACTERS[ci].avatar];
+      b.voice = b.avatar.voice;
+      b.theme = CHARACTERS[ci].theme;
+      b.planks = makePlanks(b.W, b.H, b.theme.glow, b.theme.deck);
+      b.ready = true;                 // pirates already chosen; go straight to VS
+      b.nextBlink = now + rand(1, 3);
+    }
+    this.enterCountdown(now);
+  }
+  netEnemySelect(ci, now){
+    const b = this.boards[1];
+    if (b.ready) return;
+    b.charIdx = ci;
+    b.character = CHARACTERS[ci];
+    b.avatar = AVATARS[CHARACTERS[ci].avatar];
+    b.voice = b.avatar.voice;
+    b.theme = CHARACTERS[ci].theme;
+    b.planks = makePlanks(b.W, b.H, b.theme.glow, b.theme.deck);
+    b.setMood('smile', 1.2, now);
+  }
+  netPeerGone(){                  // the other device dropped
+    this.online = false;
+    this.backToTitle();
+    document.getElementById('winOverlay').hidden = true;
+    document.getElementById('startOverlay').hidden = false;
+    Lobby.note('Opponent left the game.');
   }
   /* three character cards per board, tapped on each player's own side */
   cardRect(b, i){
@@ -1439,6 +1615,7 @@ class Game {
       b.selectSoundDone = true;
       this.maybeStartCountdown(performance.now()/1000);
     });
+    if (this.online && boardIdx === 0) this.netSend('sel', { ci });
   }
   /* Lock the pick in. Once BOTH players are ready and both select cries have
      played out, the VS splash begins. */
@@ -1448,13 +1625,21 @@ class Game {
     b.ready = true;
     play('cast', 0.85);
     b.setMood('smile', 1.6, now);
-    this.maybeStartCountdown(now);
+    if (this.online){
+      if (boardIdx === 0) this.netSend('ready', {});
+      this.netMaybeStart(now);
+    } else {
+      this.maybeStartCountdown(now);
+    }
   }
   /* Advance to the VS splash only once BOTH players have readied up AND both
      select voice lines have played out (so the cries never overlap). */
   maybeStartCountdown(now){
-    if (this.phase !== 'select') return;
+    if (this.phase !== 'select' || this.online) return;
     if (!this.boards.every(x => x.ready && x.selectSoundDone)) return;
+    this.enterCountdown(now);
+  }
+  enterCountdown(now){
     this.phase = 'countdown';
     this.vsStartAt = now;
     this.vsTaps = [0, 0];
@@ -1463,18 +1648,56 @@ class Game {
     this.startSeqBegun = false;
     play('cast', 0.9);
   }
+  /* Online: no cross-device cry gate — advance to VS once both are ready. */
+  netMaybeStart(now){
+    if (this.phase !== 'select') return;
+    if (this.boards[0].ready && this.boards[1].ready) this.enterCountdown(now);
+  }
   /* VS-screen tap race: the first player to tap their own half 5 times wins
      the right to bark first. If nobody reaches 5 before the deadline, Player 1
      leads. Locking the winner also kicks off the battle-cry sequence. */
   registerVsTap(idx, now){
     if (this.phase !== 'countdown' || this.startSeqBegun) return;
+    if (this.online && idx !== 0) return;   // online: only my own deck counts locally
     this.vsTaps[idx]++;
     play('click', 0.6);
     this.boards[idx].setMood('angry', 0.6, now);
+    if (this.online){
+      if (this.vsTaps[0] === 5){            // I claim first cry; host arbitrates
+        if (this.isHost) this.hostClaim(0, now);
+        else this.netSend('claim', {});
+      }
+      return;
+    }
     if (this.vsTaps[idx] >= 5 && this.firstSpeaker < 0){
       this.firstSpeaker = idx;
       this.beginStartSequence(now);
     }
+  }
+  /* Host tracks first claim (global 0 = host, 1 = guest) and, once decided or
+     the deadline passes, broadcasts the go signal that starts both matches. */
+  hostClaim(globalIdx, now){
+    if (this.goSent) return;
+    if (this.firstClaim == null) this.firstClaim = globalIdx;
+    this.hostSendGo(now);
+  }
+  hostSendGo(now){
+    if (this.goSent || !this.isHost) return;
+    this.goSent = true;
+    const first = this.firstClaim != null ? this.firstClaim : 0;
+    this.netSend('go', { first });
+    this.netGo({ first }, now);
+  }
+  /* Both devices act on the go signal: play own start line (first speaker a
+     beat earlier), then begin the match together. */
+  netGo(d, now){
+    if (this.startSeqBegun) return;
+    this.startSeqBegun = true;
+    const amFirst = (this.isHost && d.first === 0) || (!this.isHost && d.first === 1);
+    const me = this.boards[0];
+    me.setMood('smile', 2.4, now);
+    setTimeout(()=> playCharSound(me.avatar, 'start', 0.9), amFirst ? 0 : 1400);
+    setTimeout(()=> this.beginMatch(performance.now()/1000), 2600);
   }
   /* Both crews bark their start line in turn; the match only begins once the
      second line has finished. */
@@ -1512,7 +1735,37 @@ class Game {
     const sy = (e.clientY - r.top) * (this.H / r.height);
     const now = performance.now()/1000;
     if (sy >= this.divBot)      this.boards[0].tap(sx, sy - this.divBot, now);
-    else if (sy <= this.divTop) this.boards[1].tap(this.W - sx, this.divTop - sy, now);
+    else if (sy <= this.divTop && !this.online)   // online: the enemy half is a view, not tappable
+      this.boards[1].tap(this.W - sx, this.divTop - sy, now);
+  }
+  /* Mirror an ability the enemy cast on their device: caster = board 1,
+     its target (me) = board 0. Cooldown/charge were validated on their end. */
+  netAbility(d, now){
+    const caster = this.boards[1], victim = this.boards[0];
+    const ch = CHARACTERS.find(c => c.id === d.id) || caster.character;
+    if (!ch) return;
+    if (d.which === 'basic'){
+      playCharSound(caster.avatar, 'basic_voice', 0.95);
+      if (!playCharSound(caster.avatar, 'basic_fx', 0.9)) play('click', 0.8);
+      caster.setMood('smile', 0.8, now);
+      caster.addFloat(ch.basic.icon + ' ' + ch.basic.name + '!', '#e8c469', caster.W/2, caster.hudH + 30, now);
+      switch (ch.id){
+        case 'redbeard': caster.fireShot(caster.basicX, caster.puY, 15, now, true); break;
+        case 'frostjaw': victim.applyIce(now, 0.8); break;
+        case 'inkeye':   victim.applyInk(now, 1, 2.5); break;
+      }
+    } else {
+      play('cast', 0.9); Snd.whoosh();
+      caster.setMood('smile', 2.2, now);
+      caster.setAnnounce(ch.ult.icon + ' ' + ch.ult.name.toUpperCase() + '!', '#ffd44d', now, 1.3);
+      const T_IN = 0.35, HOVER = 1.0, T_OUT = 0.35;
+      victim.intrudedUntil = now + T_IN + HOVER + T_OUT;
+      victim.setMood('shock', T_IN + HOVER + T_OUT, now);
+      victim.setAnnounce(ch.ult.icon + ' INCOMING!', (caster.theme && caster.theme.glow) || caster.accent,
+                         now, T_IN + HOVER, false);
+      this.intrusions.push({ caster: 1, target: 0, t0: now,
+        tIn: T_IN, hover: HOVER, tOut: T_OUT, taunted: false, fired: false });
+    }
   }
   useAbility(playerIdx, which, now){
     if (this.phase !== 'match' || !this.running){ Snd.deny(); return; }
@@ -1522,6 +1775,7 @@ class Game {
     if (which === 'basic'){
       if (now < me.basicCdUntil){ Snd.deny(); return; }
       me.basicCdUntil = now + ch.basic.cd;
+      if (this.online && playerIdx === 0) this.netSend('ability', { which:'basic', id:ch.id });
       playCharSound(me.avatar, 'basic_voice', 0.95);
       if (!playCharSound(me.avatar, 'basic_fx', 0.9)) play('click', 0.8);
       me.setMood('smile', 0.8, now);
@@ -1534,6 +1788,7 @@ class Game {
     } else {
       if (me.ultCharge < ULT_MAX){ Snd.deny(); return; }
       me.ultCharge = 0;
+      if (this.online && playerIdx === 0) this.netSend('ability', { which:'ult', id:ch.id });
       play('cast', 0.9);
       Snd.whoosh();
       me.setMood('smile', 2.2, now);
@@ -1567,6 +1822,15 @@ class Game {
       const fy = y==null ? b.hudH + 26 : y;
       b.addFloat('-' + amt, '#ff5a4d', fx, fy, tNow);
     }
+    if (this.online){
+      // only my own HP is authoritative here; report it. Board 1's HP is a
+      // prediction that their reports correct, and KO waits for their signal.
+      if (boardIdx === 0){
+        this.netSend('hp', { hp: b.hp });
+        if (b.hp <= 0 && this.phase === 'match'){ this.netSend('ko', {}); this.endGame(1); }
+      }
+      return;
+    }
     if (b.hp <= 0) this.endGame(1 - boardIdx);
   }
   endGame(winnerIdx){
@@ -1593,10 +1857,13 @@ class Game {
     const dt = Math.min(0.05, now - this.lastT);
     this.lastT = now;
     for (const b of this.boards) b.tickFx(now);
-    if (this.phase === 'countdown' && !this.startSeqBegun && now >= this.vsDeadline)
-      this.beginStartSequence(now);   // nobody claimed the first cry in time → P1 leads
+    if (this.phase === 'countdown' && !this.startSeqBegun && now >= this.vsDeadline){
+      if (this.online){ if (this.isHost) this.hostSendGo(now); }   // host arbitrates
+      else this.beginStartSequence(now);   // nobody claimed the first cry in time → P1 leads
+    }
     if (this.running){
-      for (const b of this.boards) b.update(now, dt);
+      // online: only my own board (0) is simulated; board 1 is a live mirror
+      for (const b of this.boards) if (!(this.online && b.idx === 1)) b.update(now, dt);
       for (let i=this.intrusions.length-1; i>=0; i--){
         const it = this.intrusions[i];
         const caster = this.boards[it.caster], victim = this.boards[it.target];
@@ -2422,16 +2689,21 @@ for (const [fam, file] of [['Pirata One', 'fonts/pirata-one.woff2'],
   } catch(e){}
 }
 
-document.getElementById('playBtn').addEventListener('click', ()=>{
+function beginPlay(){    // shared start-of-session boot (audio, fullscreen)
   Snd.ensure();
   preloadSfx();
   Music.start();
   FS.enter();
+}
+document.getElementById('playBtn').addEventListener('click', ()=>{
+  beginPlay();
   document.getElementById('startOverlay').hidden = true;
-  game.enterSelect();
+  game.enterSelect();     // local hotseat
 });
+
 /* End-screen choices: each player picks Rematch or "Plz, no moar!". Both
-   must answer; a single "no moar" sends everyone back to the title. */
+   must answer; a single "no moar" sends everyone back to the title. Online:
+   you press only your own row; the enemy's vote arrives over the wire. */
 const rematchChoices = [null, null];
 function resetRematchUI(){
   rematchChoices[0] = rematchChoices[1] = null;
@@ -2440,32 +2712,113 @@ function resetRematchUI(){
     half.querySelector('.rematch-status').textContent = '';
   }
 }
+function showVote(side, choice){
+  const half = document.getElementById(side === 0 ? 'rematchP1' : 'rematchP2');
+  half.querySelector('.rematch-buttons').style.visibility = 'hidden';
+  half.querySelector('.rematch-status').textContent =
+    choice === 'again' ? 'ready for another round…' : 'headin’ back to port…';
+}
+function applyRematchVote(side, choice){
+  if (rematchChoices[side]) return;
+  rematchChoices[side] = choice;
+  showVote(side, choice);
+  if (rematchChoices[0] && rematchChoices[1]){
+    const quit = rematchChoices.includes('stop');
+    setTimeout(()=>{
+      document.getElementById('winOverlay').hidden = true;
+      resetRematchUI();
+      if (quit){
+        if (game.online){ Net.close(); game.online = false; }
+        game.backToTitle();
+        document.getElementById('startOverlay').hidden = false;
+      } else if (game.online){
+        game.rematchOnline(performance.now()/1000);
+      } else {
+        game.rematch(performance.now()/1000);
+      }
+    }, 500);
+  }
+}
 for (const btn of document.querySelectorAll('#winOverlay .btn')){
   btn.addEventListener('click', ()=>{
     Snd.ensure();
     const side = +btn.dataset.side, choice = btn.dataset.choice;
+    if (game.online && side !== 0) return;   // online: only your own row is yours
     if (rematchChoices[side]) return;
-    rematchChoices[side] = choice;
     play('click', 0.7);
-    const half = btn.closest('.rematch-half');
-    half.querySelector('.rematch-buttons').style.visibility = 'hidden';
-    half.querySelector('.rematch-status').textContent =
-      choice === 'again' ? 'ready for another round…' : 'headin’ back to port…';
-    if (rematchChoices[0] && rematchChoices[1]){
-      const quit = rematchChoices.includes('stop');
-      setTimeout(()=>{
-        document.getElementById('winOverlay').hidden = true;
-        resetRematchUI();
-        if (quit){
-          game.backToTitle();
-          document.getElementById('startOverlay').hidden = false;
-        } else {
-          game.rematch(performance.now()/1000);
-        }
-      }, 500);
-    }
+    if (game.online) game.netSend('rematch', { v:choice });
+    applyRematchVote(side, choice);
   });
 }
+
+/* ---------------- online lobby (relay client) ---------------- */
+const Net = {
+  ws:null, connected:false,
+  url(){
+    const p = new URLSearchParams(location.search).get('ws');
+    if (p) return p;
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${location.hostname || 'localhost'}:8777`;
+  },
+  open(onReady){
+    try { this.ws = new WebSocket(this.url()); }
+    catch(e){ onReady(false); return; }
+    this.ws.onopen = ()=>{ this.connected = true; onReady(true); };
+    this.ws.onerror = ()=>{ if (!this.connected) onReady(false); };
+    this.ws.onclose = ()=>{ this.connected = false; };
+    this.ws.onmessage = ev =>{
+      let m; try { m = JSON.parse(ev.data); } catch(e){ return; }
+      Lobby.onServer(m);
+    };
+  },
+  raw(obj){ if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(obj)); },
+  send(d){ this.raw({ t:'relay', d }); },   // a game event to the peer
+  close(){ try { this.ws && this.ws.close(); } catch(e){} this.ws = null; this.connected = false; },
+};
+
+const Lobby = {
+  el:null,
+  init(){
+    this.el = document.getElementById('lobby');
+    document.getElementById('lobbyOpen').addEventListener('click', ()=>this.toggle(true));
+    document.getElementById('lobbyClose').addEventListener('click', ()=>this.toggle(false));
+    document.getElementById('lobbyHost').addEventListener('click', ()=>this.host());
+    document.getElementById('lobbyJoin').addEventListener('click', ()=>this.join());
+  },
+  toggle(on){ this.el.hidden = !on; if (on) this.note(''); },
+  note(t){ document.getElementById('lobbyNote').textContent = t; },
+  connect(then){
+    if (Net.connected){ then(); return; }
+    this.note('Connecting…');
+    Net.open(ok => ok ? then() : this.note('Could not reach the relay server.'));
+  },
+  host(){
+    beginPlay();
+    this.connect(()=> Net.raw({ t:'host' }));
+  },
+  join(){
+    const code = (document.getElementById('lobbyCode').value || '').trim();
+    if (!/^\d{4}$/.test(code)){ this.note('Enter the 4-digit code.'); return; }
+    beginPlay();
+    this.connect(()=> Net.raw({ t:'join', code }));
+  },
+  onServer(m){
+    if (m.t === 'room'){
+      this.note('Room code: ' + m.code + ' — waiting for a mate to join…');
+    } else if (m.t === 'paired'){
+      this.toggle(false);
+      document.getElementById('startOverlay').hidden = true;
+      game.enterOnline(m.role === 'host');
+    } else if (m.t === 'err'){
+      this.note(m.why === 'no_such_room' ? 'No crew at that code.' : 'Server busy — try again.');
+    } else if (m.t === 'peer_gone'){
+      game.netPeerGone();
+    } else if (m.t === 'msg'){
+      game.onNet(m.d);
+    }
+  },
+};
+Lobby.init();
 </script>
 </body>
 </html>

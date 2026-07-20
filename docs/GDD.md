@@ -1,6 +1,6 @@
 # Pirate Tapper Showdown — Game Design Document
 
-**Version:** MVP (web remake, July 2026)
+**Version:** MVP+ (web remake, July 2026 — voice/FX/UX overhaul; online play in progress)
 **Playable build:** `web/index.html` (self-contained HTML5 canvas game)
 **Predecessor:** Unity 2021.3 project in this repository (`Assets/`)
 
@@ -39,9 +39,11 @@ Per wave, per player:
    half an interval. *This is the memorize window — spawn order = tap order.*
 2. **Active (recall).** All buttons turn opaque simultaneously; a fuse bar
    starts burning (`clearTime`, currently 5 s on every wave).
-   - Tap in spawn order: each correct pop deals `dmgPerPop` to the opponent.
-   - Wrong button: **−10** own health, mistap flag set.
-   - Bare deck tap (in the play area): **−10** own health, mistap flag set.
+   - Tap in spawn order: each correct pop is a **cannon shot**: the button
+     detonates, a ball streaks to the enemy hull, and it deals **10** to the
+     opponent (uniform across all waves).
+   - Wrong button: **−5** own health, mistap flag set.
+   - Bare deck tap (in the play area): **−5** own health, mistap flag set.
 3. **Resolution.**
    - All popped → wave clear: ult charge awarded (§5), next wave after 0.6 s.
    - Fuse runs out → auto-clear: **−30** own health, board wipes, 1 s stun,
@@ -57,11 +59,14 @@ to form, seconds to clear, damage per correct pop.
 
 | Waves | n | form (s) | clear (s) | dmg/pop |
 |---|---|---|---|---|
-| 1–2 | 2 | 1.0 / 0.8 | 5 | 5 |
-| 3–5 | 3 | 1.0 / 0.8 / 1.2 | 5 | 5 |
-| 6–11 | 4 | 0.8–1.2 | 5 | 7 |
+| 1–2 | 2 | 1.0 / 0.8 | 5 | 10 |
+| 3–5 | 3 | 1.0 / 0.8 / 1.2 | 5 | 10 |
+| 6–11 | 4 | 0.8–1.2 | 5 | 10 |
 | 12–20 | 5 | 0.8–1.2 | 5 | 10 |
-| 21+ (overtime) | 6 | 0.7 | 4.6 − 0.15·k, floor 3.2 | 12 |
+| 21+ (overtime) | 6 | 0.7 | 4.6 − 0.15·k, floor 3.2 | 10 |
+
+Wave escalation is size/speed only; damage per pop is a flat 10 so the
+health race stays legible.
 
 The original Unity build simply stopped after wave 20; the remake adds the
 endless overtime so matches always terminate.
@@ -99,8 +104,13 @@ drawn full-face and ringed with a gold frame (covering the source PNG's edge).
 ## 4. Characters (MVP: 3)
 
 Each player picks a character on the **select screen** (three cards per
-board half, tapped on the player's own side; match starts ~1 s after both
-have chosen; rematch returns to select).
+board half, tapped on the player's own side). Browsing is free: every tap
+plays that pirate's select voice line and shows a **flavor summary** of
+their Basic and Ultimate; a **Ready button** locks the pick in. The VS
+splash opens only once both players are Ready and both select cries have
+finished. On the VS screen the players race — **first to tap their own
+deck 5 times** has their pirate bark its start line first (Player 1 leads
+if nobody taps) — and the match begins when the second start line ends.
 
 A character = **look + voice set + two abilities**:
 
@@ -116,7 +126,7 @@ A character = **look + voice set + two abilities**:
 
 | Character | Fantasy | Basic (8 s CD) | Ultimate |
 |---|---|---|---|
-| **Redbeard** *the Cannoneer* | reliable aggression | 💣 **Pot Shot** — 1 cannonball, 6 dmg | 💥 **Broadside** — 5 cannonballs, 8 dmg each (40 total) over ~1.9 s |
+| **Redbeard** *the Cannoneer* | reliable aggression | 💣 **Pot Shot** — 1 cannonball, 15 dmg | 💥 **Broadside** — 5 cannonballs, 10 dmg each (50 total) over ~1.4 s |
 | **White Death** *the Iceberg* | tempo control | ❄️ **Cold Snap** — freeze enemy board 0.8 s | 🧊 **Deep Freeze** — freeze 2.6 s; enemy wave fuse keeps burning (threatens the −30 auto-clear) |
 | **Inkeye** *the Cursed* | memory attack | 🦑 **Ink Spit** — 1 ink blob hides part of the board 2.5 s | 👻 **Kraken's Curse** — 4 s: all faces wiped to identical grey + positions juggled + 2 ink blobs |
 
@@ -124,8 +134,11 @@ Ability rules:
 
 - Ability buttons remain usable **while frozen** (deliberate counterplay —
   you can retaliate from inside the ice).
-- Cannonballs land on random points of the enemy play area with impact
-  visuals, smoke, and board shake.
+- Cannonballs (taps and Redbeard's abilities alike) fly from their source —
+  the popped button, or the ability button itself — across the water to the
+  **enemy hull just below their HP bar**, where splinters, a blast and the
+  damage number land. Ability balls are bigger, faster, crack on launch and
+  shake the victim's board; their damage lands on impact.
 - Freeze makes enemy board taps inert (frost-crack feedback, no damage
   penalty for tapping while frozen).
 - Ink blobs are opaque wobbling splats over random spots; taps still work
@@ -139,7 +152,7 @@ Ability rules:
 `applyIce(secs)`, `applyGhost(secs)`, `applyInk(count, secs)`,
 `applyJuggle()`, `applyPowder()` (coats up to 3 buttons; popping a powdered
 button still counts but deals 12 self-damage — **currently unassigned**,
-reserved for a future character), `scheduleCannons(n, dmg)`.
+reserved for a future character), `fireShot(x, y, dmg, heavy)`.
 
 ---
 
@@ -161,7 +174,7 @@ Consequences (intended):
   In a typical 15–25-wave match that's **2–4 ultimates per player**.
 - **Overflow is wasted** — charge gained at 100 disappears, so sitting on a
   ready ult costs income. Fire it.
-- Mistaps hurt twice: −10 HP *and* the lost perfect bonus.
+- Mistaps hurt twice: −5 HP *and* the lost perfect bonus.
 - A failed (timed-out) wave earns nothing.
 
 UI: basic button with cooldown pie-sweep; larger ultimate button with a gold
@@ -225,9 +238,11 @@ Inkeye & White Death = p2 (adding a third voice set is a `VOICES` entry + files)
   board also shows a per-viewer verdict — green VICTORY! on the winner's
   half, red DEFEAT on the loser's — so even a mirror match (both players on
   the same character) is unambiguous. The
-  rematch menu is a light translucent layer (quote + Run It Back only —
-  the on-canvas declarations carry the winner's name, shown once per
-  board). The winner is always named by character, not player number.
+  rematch menu is a light translucent layer with a choice row **per player,
+  each rotated to face its owner**: *Rematch* and *Plz, no moar!*. Both
+  must answer — two Rematches restart the same pirates from the VS splash;
+  any "no moar" returns to the title. The winner is always named by
+  character, not player number.
 - **Audio** (all from the Unity project's `Assets/Audio`, transcoded to mp3):
   - Music: tavern and battle tracks alternating forever (port of Unity
     `MusicPlayer`), over a quiet sea-waves loop.
@@ -240,9 +255,15 @@ Inkeye & White Death = p2 (adding a third voice set is a `VOICES` entry + files)
   happened; every enemy effect announces itself on the victim's board
   (FROZEN / JUGGLED / CURSED / GUNPOWDER); every ability the caster fires is
   named on the caster's board.
-- **Cannon fire is diegetic:** cannonball abilities crack from the enemy
-  ship's hull (muzzle flash at the waterline) and visibly arc across the
-  water onto your deck, swelling mid-flight, before the impact lands.
+- **Cannon fire is diegetic:** every ball visibly leaves its source (popped
+  button or ability button), streaks over the HUD and the water at constant
+  speed with a smoke trail and hot streak, and strikes the enemy hull.
+- **Typography:** *Pirata One* (bundled woff2) carries all display text —
+  titles, names, announcements, verdicts, buttons; *Jim Nightshade* carries
+  the secondary script lines (hints, flavor, status). Both load via the
+  FontFace API from `assets/fonts/`, so every build ships them offline.
+- **Title screen:** a full-bleed painted splash (`splash_screen.jpg`) with a
+  single circular gold play button tucked into the lower-right deck strip.
 - **HUD portraits:** each player's character is a large badge (~2× the HUD
   strip height) overhanging their deck; button spawns avoid the portrait zone.
 - **Health bar:** tall high-contrast bar with the HP number inside it
@@ -305,12 +326,18 @@ you only through explicit events.
 - Everything that crosses between players goes through two functions:
   `Game.applyDamage(target, amount)` and `Game.useAbility(player, which)`.
   These are the future network message boundary.
-- Online plan: small WebSocket server for matchmaking + relay; shared RNG
-  seed + synced start time so both clients run identical wave schedules;
-  damage events ordered by **client timestamps** so a photo-finish is decided
-  by when taps actually happened, not connection speed. Client-side tap
-  validation is acceptable for casual play; the server can sanity-check
-  clear-rates for basic anti-cheat.
+- Online plan (**in build — see Phase 3**): a tiny WebSocket **relay** with
+  4-digit room codes; no game logic on the server. Each device runs the
+  authoritative simulation of **its own board only** and mirrors the enemy
+  board from a stream of events (button spawns with normalized coordinates,
+  wave arming, pops, fails, ability casts, HP reports). The **screen layout
+  is unchanged from hotseat** — you see the enemy's full board live at the
+  top of your screen; you just can't tap it. Latency shifts what you *see*
+  of the enemy by ~half a ping but can never slow your own taps, because
+  all reaction-critical input resolves locally. Self-HP is computed locally
+  from received damage events; the enemy's HP display is corrected by their
+  reports. Client-side validation is acceptable for casual play; the server
+  can sanity-check clear-rates later for basic anti-cheat.
 
 ---
 
@@ -320,10 +347,10 @@ Current risks and where to tune:
 
 | Concern | Lever |
 |---|---|
-| Redbeard (pure damage) vs disruptors | cannonball damage (6 / 8), Broadside count |
+| Redbeard (pure damage) vs disruptors | cannonball damage (15 / 10), Broadside count |
 | Freeze feels unfair with 5 s fuse | freeze durations (0.8 / 2.6), or pause fuse for part of the freeze |
 | Ghost erases both memory anchors | leave a faint face-color tint behind; shorten from 4 s |
-| Mistap double-punishment too harsh for kids | wrong-tap damage (10) and/or drop the perfect-bonus loss |
+| Mistap double-punishment too harsh for kids | wrong-tap damage (5) and/or drop the perfect-bonus loss |
 | Ult frequency | base/speed/perfect gains (10/8/7), `ULT_MAX` (100) |
 | Empty-deck tap damage causes accidental rage | scale by wave, or disable during forming |
 | Overtime difficulty ramp | overtime clear-time decay (0.15 s/wave, floor 3.2 s) |
@@ -421,16 +448,26 @@ drawn version; missing files fall back. Full guide: `docs/ASSET_SPECS.md`.
 - [ ] Best authentic source: bake the original 3D pirate models to sprite
       sheets in Unity (camera + animation capture per character).
 
-### Phase 3 — Device vs Device *(the milestone the remake was architected for)*
-- [ ] Determinism audit: all gameplay randomness through one seeded RNG.
-- [ ] WebSocket server: create/join by **room code** (quick match later),
-      event relay, shared seed + synced match start.
-- [ ] Protocol = the existing choke points (`applyDamage`, `useAbility`) +
-      wave/state events, **ordered by client timestamps** so ping never
-      decides a photo-finish.
-- [ ] Remote layout: own board fullscreen; enemy as a status strip (HP,
-      wave, ult ring, their avatar reacting to what you do to them).
-- [ ] Disconnect/reconnect handling; latency feel testing on real phones.
+### Phase 3 — Device vs Device *(in progress — `server/` + Net layer)*
+
+Architecture decision (supersedes the earlier seed-lockstep sketch): **event
+mirroring over a dumb relay**, keeping the hotseat screen layout.
+
+- [x] WebSocket relay server (`server/relay.js`): host gets a **4-digit room
+      code**, joiner enters it, server pairs the two sockets and forwards
+      opaque messages. No game state on the server.
+- [x] Lobby on the title screen: *Host online* (shows the code) / *Join*
+      (code entry), server address via `?ws=` param (defaults to the page's
+      host, port 8777).
+- [x] Remote mode: **same two-board layout as hotseat** — your board at the
+      bottom (authoritative local sim), the enemy's full board mirrored live
+      at the top from their events. Taps on the enemy half are ignored.
+- [x] Protocol: select/ready → VS tap race (host arbitrates the 5-tap claim)
+      → start lines → per-event match mirror (`btn`/`armed`/`pop`/`fail`/
+      `clear`/`mistap`/`ability`/`hp`/`ko`) → rematch votes.
+- [ ] Disconnect/reconnect handling beyond "back to title" (resume grace).
+- [ ] Latency feel testing on real phones over the internet; relay hosting.
+- [ ] Quick match (server pairs strangers) once room codes prove out.
 - [ ] Emotes (tap your own avatar to taunt — voice grunt on enemy screen).
 
 ### Phase 4 — Progression & economy v1 *(after Phase 3; local-first parts earlier)*
@@ -503,14 +540,16 @@ so they aren't lost; not yet committed or specced in detail.
 |---|---|
 | Max HP | 300 |
 | Auto-clear (timeout) damage | 30 |
-| Wrong-button tap | 10 |
-| Bare-deck tap | 10 |
+| Wrong-button tap | 5 |
+| Bare-deck tap | 5 |
 | Powdered-button self-damage | 12 (unassigned kit) |
 | Wave clear window | 5 s (overtime: 4.6 → 3.2 s) |
 | Basic cooldown | 8 s (first use at 4 s) |
 | Ult charge | 10 + 8·speed + 7·perfect, cap 100 |
-| Pot Shot / Broadside | 1×6 dmg / 5×8 dmg |
+| Pot Shot / Broadside | 1×15 dmg / 5×10 dmg |
 | Cold Snap / Deep Freeze | 0.8 s / 2.6 s |
 | Ink Spit / Kraken's Curse | 1 blob 2.5 s / ghost 4 s + juggle + 2 blobs 4 s |
 | Button min spacing | 2.35 × radius |
-| Idle grunt interval | 5–15 s |
+| Damage per correct pop | 10 (all waves) |
+| Tap shot / ability shot flight | 0.22 s / 0.19 s |
+| Idle emote interval | 5–15 s (silent; face only) |
