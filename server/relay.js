@@ -16,6 +16,7 @@
  *   peer socket closes                   → { t:'peer_gone' }
  */
 'use strict';
+const http = require('http');
 const { WebSocketServer } = require('ws');
 
 const PORT = Number(process.env.PORT) || 8777;
@@ -31,8 +32,14 @@ function newCode(){
   return null;
 }
 
-const wss = new WebSocketServer({ port: PORT });
-console.log(`pirate-tapper relay listening on :${PORT}`);
+// A tiny HTTP server shares the port so hosts (e.g. Render) can health-check
+// over plain HTTP, while the WebSocket server handles the upgrade requests.
+const httpServer = http.createServer((req, res) => {
+  res.writeHead(200, { 'content-type': 'text/plain' });
+  res.end('pirate-tapper relay ok — ' + rooms.size + ' room(s) open\n');
+});
+const wss = new WebSocketServer({ server: httpServer });
+httpServer.listen(PORT, () => console.log(`pirate-tapper relay listening on :${PORT}`));
 
 wss.on('connection', ws => {
   ws.isAlive = true;

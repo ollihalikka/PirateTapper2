@@ -1,0 +1,13 @@
+# Render blueprint for the Pirate Tapper Showdown online relay.
+# In Render: New → Blueprint → pick this repo. It reads this file and creates
+# the relay as a Web Service. (The game client itself is served by GitHub
+# Pages, not Render.)
+services:
+  - type: web
+    name: pirate-tapper-relay
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
